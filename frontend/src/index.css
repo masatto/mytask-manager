@@ -1,0 +1,39 @@
+:root {
+  --color-bg: #ffffff;
+  --color-sidebar: #f7f7f8;
+  --color-text: #1f2328;
+  --color-text-sub: #59636e;
+  --color-border: #e4e6ea;
+  --color-hover: #ececef;
+  --color-accent: #2f6fde;
+  --color-accent-soft: #e6eefc;
+  --color-danger: #d1242f;
+  --color-priority-high: #d1242f;
+  --color-priority-medium: #bf8700;
+  --color-priority-low: #8c959f;
+
+  font-family: system-ui, 'Segoe UI', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+  line-height: 1.5;
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 1280px;
+  background: var(--color-bg);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}

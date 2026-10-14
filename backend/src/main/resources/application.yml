@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: mytask-manager
+  datasource:
+    url: jdbc:h2:file:${mytask.data-dir}/mytask
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  h2:
+    console:
+      enabled: true
+  jackson:
+    time-zone: Asia/Tokyo
+
+mytask:
+  # データベースファイルの置き場所。リポジトリの外に置き、git clean等で消えないようにする
+  data-dir: ${user.home}/.mytask-manager/data
+  zone: Asia/Tokyo
