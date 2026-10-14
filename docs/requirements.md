@@ -1,4 +1,4 @@
-# my-tasks 要件定義 v1.0
+# mytask-manager 要件定義 v1.1
 
 2026-10-14 確定。変更する場合はこのファイルを更新し、末尾の変更履歴に記録する。
 
@@ -106,6 +106,7 @@
   - React + TypeScript（Vite）
   - TanStack Query
   - React Hook Form + Zod
+  - React Router（ビューと詳細パネルをURLで扱う）
 - **バックエンド**：
   - Spring Boot 4 / Java 21
   - Spring Data JPA
@@ -137,3 +138,4 @@
 | 日付 | 版 | 内容 |
 |---|---|---|
 | 2026-10-14 | 1.0 | 初版 |
+| 2026-10-14 | 1.1 | 技術構成に React Router を追加（画面設計より） |
