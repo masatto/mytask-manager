@@ -375,6 +375,27 @@ class SubtaskApiTest {
     }
 
     @Test
+    void 今日完了にした親タスクの数を返す_サブタスクと昨日の完了は数えない() throws Exception {
+        long yesterday = createTask("""
+                {"title":"昨日完了"}
+                """);
+        clock.set(TestClockConfig.NOW.minusDays(1));
+        changeStatus(yesterday, "{\"status\":\"DONE\"}");
+        clock.set(TestClockConfig.NOW);
+        long parent = createTask("""
+                {"title":"今日完了（サブタスクつき）"}
+                """);
+        createSubtask(parent, "\"title\":\"子\"");
+        changeStatus(parent, "{\"status\":\"DONE\",\"completeSubtasks\":true}");
+        long other = createTask("""
+                {"title":"今日完了"}
+                """);
+        changeStatus(other, "{\"status\":\"DONE\"}");
+
+        mockMvc.perform(get("/api/tasks/counts")).andExpect(jsonPath("$.doneToday").value(2));
+    }
+
+    @Test
     void 親を削除するとサブタスクも削除される() throws Exception {
         long parent = createTask("""
                 {"title":"親"}

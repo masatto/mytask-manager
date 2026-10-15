@@ -29,3 +29,64 @@
   padding: 0;
   list-style: none;
 }
+
+/* サブタスクを持つ親のかたまりの後に、少し間を空けて次のタスクと分ける */
+.withSubtasks {
+  margin-bottom: 6px;
+}
+
+/*
+ * サブタスクのガイド線（└ の形）。親のチェックボックスの中心（左から 48px）の真下に縦線を引き、
+ * 各サブタスクへ横線でつなぐ。縦線は最後のサブタスクで止まるので、どこまでがサブタスクかがわかる。
+ */
+.subtaskItem {
+  position: relative;
+}
+
+.subtaskItem::before,
+.subtaskItem::after {
+  content: '';
+  position: absolute;
+  left: 47px;
+  background: var(--color-guide);
+  pointer-events: none;
+}
+
+/* 縦線。最初の行は親のチェックボックスのすぐ下から始める */
+.subtaskItem::before {
+  top: 0;
+  bottom: 0;
+  width: 2px;
+}
+
+.subtaskItem:first-child::before {
+  top: -12px;
+}
+
+.subtaskItem:last-child::before {
+  bottom: calc(50% - 1px);
+}
+
+/* 横線（サブタスクのチェックボックスの手前まで） */
+.subtaskItem::after {
+  top: calc(50% - 1px);
+  width: 41px;
+  height: 2px;
+}
+
+.groupAction {
+  margin-left: auto;
+  padding: 2px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg);
+  color: var(--color-text-sub);
+  font-size: 12px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.groupAction:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}

@@ -1,6 +1,7 @@
 package com.masatto.mytask.backup;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -20,6 +21,8 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+
+import com.masatto.mytask.common.ApiException;
 
 import lombok.extern.slf4j.Slf4j;
 import tools.jackson.databind.json.JsonMapper;
@@ -88,6 +91,25 @@ public class AutoBackupService {
         } catch (IOException | RuntimeException e) {
             log.error("Auto backup failed: {}", file, e);
             return Optional.empty();
+        }
+    }
+
+    /**
+     * 自動バックアップのファイルから復元する（dryRun なら検証と件数の確認だけ）。
+     * 名前は自動バックアップのファイル名の形に限り、保存先フォルダーの外のファイルは読まない。
+     */
+    public BackupService.ImportSummary restore(String name, boolean dryRun) {
+        if (!FILE_NAME.matcher(name).matches()) {
+            throw ApiException.notFound("自動バックアップが見つかりません");
+        }
+        Path file = directory.resolve(name).normalize();
+        if (!file.startsWith(directory) || !Files.isRegularFile(file)) {
+            throw ApiException.notFound("自動バックアップが見つかりません");
+        }
+        try {
+            return backupService.importJson(Files.readString(file), dryRun);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
     }
 

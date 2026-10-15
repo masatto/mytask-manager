@@ -6,6 +6,7 @@ import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,6 +29,14 @@ public class BackupController {
     @GetMapping("/auto")
     public AutoBackupService.Status autoBackupStatus() {
         return autoBackupService.status();
+    }
+
+    /** 自動バックアップのファイルから復元する。dryRun=true なら検証と件数の確認だけ（api-design 6.4） */
+    @PostMapping("/auto/{name}/import")
+    public ResponseEntity<?> restoreAutoBackup(@PathVariable String name,
+            @RequestParam(defaultValue = "false") boolean dryRun) {
+        BackupService.ImportSummary summary = autoBackupService.restore(name, dryRun);
+        return dryRun ? ResponseEntity.ok(summary) : ResponseEntity.noContent().build();
     }
 
     @GetMapping

@@ -1,7 +1,13 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState, type ChangeEvent } from 'react'
 import { ApiRequestError } from '../api/client.ts'
-import { exportBackup, fetchAutoBackupStatus, importBackup, type ImportSummary } from '../api/backup.ts'
+import {
+  exportBackup,
+  fetchAutoBackupStatus,
+  importBackup,
+  restoreAutoBackup,
+  type ImportSummary,
+} from '../api/backup.ts'
 import { ConfirmDialog } from '../components/ConfirmDialog.tsx'
 import { PageTitle } from '../components/PageTitle.tsx'
 import { formatDateTime } from '../lib/date.ts'
@@ -39,7 +45,12 @@ function download(blob: Blob, filename: string) {
   URL.revokeObjectURL(url)
 }
 
-type PendingImport = { json: string; fileName: string; summary: ImportSummary }
+/** D3 で確認待ちの取り込み。source は表示用の名前（ファイル名） */
+type PendingImport = { source: string; summary: ImportSummary; apply: () => Promise<void> }
+
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof ApiRequestError && error.code === 'INVALID_BACKUP' ? error.message : fallback
+}
 
 /** S5 設定（バックアップ） */
 export function SettingsPage() {
@@ -82,15 +93,21 @@ export function SettingsPage() {
     try {
       const json = await file.text()
       const summary = await importBackup(json, true)
-      setPending({ json, fileName: file.name, summary })
+      setPending({ source: file.name, summary, apply: () => importBackup(json, false) })
     } catch (error) {
-      setImportError(
-        error instanceof ApiRequestError && error.code === 'INVALID_BACKUP'
-          ? error.message
-          : 'ファイルを確認できませんでした',
-      )
+      setImportError(errorMessage(error, 'ファイルを確認できませんでした'))
     } finally {
       setChecking(false)
+    }
+  }
+
+  /** 自動バックアップから復元する。流れはファイルの取り込みと同じ（検証 → D3 → 置き換え） */
+  const handleRestore = async (name: string) => {
+    try {
+      const summary = await restoreAutoBackup(name, true)
+      setPending({ source: name, summary, apply: () => restoreAutoBackup(name, false) })
+    } catch (error) {
+      showToast({ message: errorMessage(error, '自動バックアップを確認できませんでした') })
     }
   }
 
@@ -98,10 +115,10 @@ export function SettingsPage() {
     setPending(null)
     setImporting(true)
     try {
-      await importBackup(target.json, false)
+      await target.apply()
       // すべてのデータが置き換わるので、キャッシュをすべて取り直す
       await queryClient.invalidateQueries()
-      showToast({ message: `${target.fileName} からインポートしました` })
+      showToast({ message: `${target.source} からインポートしました` })
     } catch (error) {
       setImportError(error instanceof ApiRequestError ? error.message : 'インポートに失敗しました')
     } finally {
@@ -157,7 +174,7 @@ export function SettingsPage() {
         )}
       </section>
 
-      <AutoBackupSection />
+      <AutoBackupSection onRestore={handleRestore} disabled={importing} />
 
       {pending && (
         <ConfirmDialog
@@ -174,7 +191,7 @@ export function SettingsPage() {
 }
 
 /** 自動バックアップ（毎日1回、サーバーが保存先フォルダーに JSON を保存する） */
-function AutoBackupSection() {
+function AutoBackupSection({ onRestore, disabled }: { onRestore: (name: string) => void; disabled: boolean }) {
   const { data, isError } = useQuery({ queryKey: ['backup', 'auto'], queryFn: fetchAutoBackupStatus })
   const { showToast } = useToast()
 
@@ -200,7 +217,7 @@ function AutoBackupSection() {
         <>
           <p className={styles.description}>
             アプリの起動時と毎日0時過ぎに1回、上のエクスポートと同じ JSON を自動で保存し、直近{data.keep}
-            日分を残します。復元するときは、上の「JSONをインポート...」でこのフォルダーのファイルを選んでください。
+            日分を残します。「復元」で、その時点の状態に戻せます。
           </p>
           <div className={styles.row}>
             <code className={styles.path}>{data.directory}</code>
@@ -218,6 +235,15 @@ function AutoBackupSection() {
                   <span className={styles.meta}>
                     {file.createdAt ? formatDateTime(file.createdAt) : ''}・{Math.max(1, Math.round(file.size / 1024))}KB
                   </span>
+                  <button
+                    type="button"
+                    className={styles.smallButton}
+                    onClick={() => onRestore(file.name)}
+                    disabled={disabled}
+                    aria-label={`${file.name} から復元`}
+                  >
+                    復元
+                  </button>
                 </li>
               ))}
               {data.files.length > 5 && <li className={styles.meta}>ほか{data.files.length - 5}件</li>}

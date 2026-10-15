@@ -33,3 +33,10 @@ export type AutoBackupStatus = {
 export function fetchAutoBackupStatus(): Promise<AutoBackupStatus> {
   return apiFetch('/backup/auto')
 }
+
+/** 自動バックアップのファイルから復元する（dryRun なら検証と件数の確認だけ） */
+export function restoreAutoBackup(name: string, dryRun: true): Promise<ImportSummary>
+export function restoreAutoBackup(name: string, dryRun: false): Promise<void>
+export function restoreAutoBackup(name: string, dryRun: boolean): Promise<ImportSummary | void> {
+  return apiFetch(`/backup/auto/${encodeURIComponent(name)}/import?dryRun=${dryRun}`, { method: 'POST' })
+}
