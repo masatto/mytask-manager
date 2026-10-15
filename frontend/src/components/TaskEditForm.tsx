@@ -3,11 +3,23 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { ApiRequestError } from '../api/client.ts'
-import { PRIORITY_LABELS, STATUS_LABELS, type Priority, type TaskDetail, type TaskStatus } from '../api/types.ts'
-import { useDeleteTask, useToggleComplete, useUpdateTask } from '../hooks/useTasks.ts'
+import { changeTaskStatus } from '../api/tasks.ts'
+import {
+  PRIORITY_LABELS,
+  STATUS_LABELS,
+  type Priority,
+  type Task,
+  type TaskDetail,
+  type TaskStatus,
+  type TaskUpdateInput,
+} from '../api/types.ts'
+import { isChecked, useToggleComplete } from '../hooks/useToggleComplete.tsx'
+import { useDeleteTask, useUpdateTask } from '../hooks/useTasks.ts'
 import { formatDate, formatDateTime } from '../lib/date.ts'
 import { useToast } from '../toast/useToast.ts'
 import { ConfirmDialog } from './ConfirmDialog.tsx'
+import { PriorityMark } from './PriorityMark.tsx'
+import { QuickAdd } from './QuickAdd.tsx'
 import styles from './TaskEditForm.module.css'
 
 const PRIORITIES: Priority[] = ['HIGH', 'MEDIUM', 'LOW']
@@ -42,14 +54,26 @@ function toFormValues(task: TaskDetail): FormValues {
   }
 }
 
+function toUpdateInput(values: FormOutput): TaskUpdateInput {
+  return {
+    title: values.title,
+    memo: values.memo === '' ? null : values.memo,
+    dueDate: values.dueDate || null,
+    dueTime: values.dueDate && values.dueTime ? values.dueTime : null,
+    priority: values.priority,
+    status: values.status,
+  }
+}
+
 type TaskEditFormProps = {
   task: TaskDetail
   onClose: () => void
   onDeleted: () => void
   onDirtyChange: (dirty: boolean) => void
+  onOpenTask: (id: number) => void
 }
 
-export function TaskEditForm({ task, onClose, onDeleted, onDirtyChange }: TaskEditFormProps) {
+export function TaskEditForm({ task, onClose, onDeleted, onDirtyChange, onOpenTask }: TaskEditFormProps) {
   const {
     register,
     handleSubmit,
@@ -65,9 +89,14 @@ export function TaskEditForm({ task, onClose, onDeleted, onDirtyChange }: TaskEd
   })
   const updateTask = useUpdateTask()
   const deleteTask = useDeleteTask()
-  const { toggle, pending } = useToggleComplete()
+  const { toggle, pending, confirmDialog } = useToggleComplete()
   const { showToast } = useToast()
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  // D1：保存でステータスを完了にしようとしたが、未完了のサブタスクが残っている
+  const [confirmingComplete, setConfirmingComplete] = useState<FormOutput | null>(null)
+
+  const subtasks = task.subtasks ?? []
+  const incompleteSubtasks = subtasks.filter((s) => s.status !== 'DONE').length
 
   useEffect(() => {
     onDirtyChange(isDirty)
@@ -87,19 +116,9 @@ export function TaskEditForm({ task, onClose, onDeleted, onDirtyChange }: TaskEd
 
   const dueDate = watch('dueDate')
 
-  const onSubmit = (values: FormOutput) => {
+  const save = (values: FormOutput) => {
     updateTask.mutate(
-      {
-        id: task.id,
-        input: {
-          title: values.title,
-          memo: values.memo === '' ? null : values.memo,
-          dueDate: values.dueDate || null,
-          dueTime: values.dueDate && values.dueTime ? values.dueTime : null,
-          priority: values.priority,
-          status: values.status,
-        },
-      },
+      { id: task.id, input: toUpdateInput(values) },
       {
         onSuccess: (updated) => {
           reset(toFormValues({ ...task, ...updated }))
@@ -118,6 +137,26 @@ export function TaskEditForm({ task, onClose, onDeleted, onDirtyChange }: TaskEd
     )
   }
 
+  const onSubmit = (values: FormOutput) => {
+    if (values.status === 'DONE' && task.status !== 'DONE' && incompleteSubtasks > 0) {
+      setConfirmingComplete(values)
+      return
+    }
+    save(values)
+  }
+
+  /** D1 で OK：サブタスクごと一括完了してから、残りの項目を保存する（api-design 3.6） */
+  const completeAllAndSave = async (values: FormOutput) => {
+    setConfirmingComplete(null)
+    try {
+      await changeTaskStatus(task.id, 'DONE', true)
+    } catch {
+      showToast({ message: '保存できませんでした' })
+      return
+    }
+    save(values)
+  }
+
   const handleDelete = () => {
     deleteTask.mutate(task.id, {
       onSuccess: () => {
@@ -130,8 +169,6 @@ export function TaskEditForm({ task, onClose, onDeleted, onDirtyChange }: TaskEd
     setConfirmingDelete(false)
   }
 
-  const checked = pending?.task.id === task.id ? pending.status === 'DONE' : task.status === 'DONE'
-
   return (
     <form className={styles.form} onSubmit={handleSubmit(onSubmit)} noValidate>
       <div className={styles.toolbar}>
@@ -143,11 +180,17 @@ export function TaskEditForm({ task, onClose, onDeleted, onDirtyChange }: TaskEd
         </button>
       </div>
 
+      {task.parent && (
+        <button type="button" className={styles.parentLink} onClick={() => onOpenTask(task.parent!.id)}>
+          ← {task.parent.title}
+        </button>
+      )}
+
       <div className={styles.titleRow}>
         <input
           type="checkbox"
           className={styles.checkbox}
-          checked={checked}
+          checked={isChecked(task, pending)}
           onChange={(e) => toggle(task, e.target.checked)}
           aria-label={`「${task.title}」を完了にする`}
         />
@@ -237,8 +280,34 @@ export function TaskEditForm({ task, onClose, onDeleted, onDirtyChange }: TaskEd
       <label className={styles.memoLabel} htmlFor="task-memo">
         メモ
       </label>
-      <textarea id="task-memo" className={styles.memo} rows={6} {...register('memo')} />
+      <textarea id="task-memo" className={styles.memo} rows={5} {...register('memo')} />
       {errors.memo && <p className={styles.fieldError}>{errors.memo.message}</p>}
+
+      {/* サブタスクの下にはサブタスクを作れないので、親のときだけ出す（1階層の制約） */}
+      {!task.parent && (
+        <section className={styles.subtasks} aria-label="サブタスク">
+          <h3 className={styles.subtasksHeading}>
+            サブタスク
+            {subtasks.length > 0 && (
+              <span className={styles.subtasksCount}>
+                {subtasks.length - incompleteSubtasks}/{subtasks.length}
+              </span>
+            )}
+          </h3>
+          <ul className={styles.subtaskList}>
+            {subtasks.map((sub) => (
+              <SubtaskItem
+                key={sub.id}
+                task={sub}
+                checked={isChecked(sub, pending)}
+                onToggle={toggle}
+                onOpen={onOpenTask}
+              />
+            ))}
+          </ul>
+          <QuickAdd dueDate={null} parentId={task.id} placeholder="サブタスクを追加" compact />
+        </section>
+      )}
 
       <div className={styles.actions}>
         <button type="button" className={styles.secondary} onClick={onClose}>
@@ -255,13 +324,57 @@ export function TaskEditForm({ task, onClose, onDeleted, onDirtyChange }: TaskEd
 
       {confirmingDelete && (
         <ConfirmDialog
-          message="このタスクを削除しますか？"
+          message={
+            subtasks.length > 0
+              ? `サブタスク${subtasks.length}件も削除されます。削除しますか？`
+              : 'このタスクを削除しますか？'
+          }
           confirmLabel="削除"
           danger
           onConfirm={handleDelete}
           onCancel={() => setConfirmingDelete(false)}
         />
       )}
+      {confirmingComplete && (
+        <ConfirmDialog
+          message={`未完了のサブタスクが${incompleteSubtasks}件あります。すべて完了にしますか？`}
+          confirmLabel="すべて完了"
+          onConfirm={() => completeAllAndSave(confirmingComplete)}
+          onCancel={() => setConfirmingComplete(null)}
+        />
+      )}
+      {confirmDialog}
     </form>
+  )
+}
+
+type SubtaskItemProps = {
+  task: Task
+  checked: boolean
+  onToggle: (task: Task, done: boolean) => void
+  onOpen: (id: number) => void
+}
+
+function SubtaskItem({ task, checked, onToggle, onOpen }: SubtaskItemProps) {
+  const due = task.dueDate ? [formatDate(task.dueDate), task.dueTime].filter(Boolean).join(' ') : ''
+  return (
+    <li className={styles.subtaskItem}>
+      <input
+        type="checkbox"
+        className={styles.subtaskCheckbox}
+        checked={checked}
+        onChange={(e) => onToggle(task, e.target.checked)}
+        aria-label={`「${task.title}」を完了にする`}
+      />
+      <button
+        type="button"
+        className={checked ? `${styles.subtaskTitle} ${styles.subtaskDone}` : styles.subtaskTitle}
+        onClick={() => onOpen(task.id)}
+      >
+        {task.title}
+      </button>
+      <PriorityMark priority={task.priority} />
+      {due && <span className={task.overdue ? `${styles.subtaskDue} ${styles.overdue}` : styles.subtaskDue}>{due}</span>}
+    </li>
   )
 }

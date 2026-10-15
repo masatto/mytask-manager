@@ -52,7 +52,10 @@ public class Task {
 
     private Instant completedAt;
 
-    // サブタスク関連（Phase 2 で関連付けに置き換える）
+    /**
+     * 親タスクのID。サブタスクの取得は親IDでまとめて行う（N+1 を避けるため）ので、
+     * 関連（@ManyToOne）にはせずIDで持つ。作成後は変更できない。
+     */
     private Long parentId;
 
     @Column(nullable = false)
@@ -72,8 +75,9 @@ public class Task {
     private Instant updatedAt;
 
     public static Task create(String title, String memo, LocalDate dueDate, LocalTime dueTime,
-            Priority priority, Instant now) {
+            Priority priority, Long parentId, Instant now) {
         Task task = new Task();
+        task.parentId = parentId;
         task.title = title;
         task.memo = memo;
         task.setDue(dueDate, dueTime);
@@ -108,6 +112,15 @@ public class Task {
 
     public boolean isDone() {
         return status == TaskStatus.DONE;
+    }
+
+    public boolean isSubtask() {
+        return parentId != null;
+    }
+
+    /** 一覧で親単位にまとめるときのキー（親なら自分、サブタスクなら親） */
+    public Long rootId() {
+        return parentId != null ? parentId : id;
     }
 
     /**

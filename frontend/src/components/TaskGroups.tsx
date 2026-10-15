@@ -1,5 +1,6 @@
+import { useState } from 'react'
+import { isChecked, useToggleComplete } from '../hooks/useToggleComplete.tsx'
 import type { TaskGroup } from '../lib/grouping.ts'
-import { useToggleComplete } from '../hooks/useTasks.ts'
 import { TaskRow } from './TaskRow.tsx'
 import styles from './TaskGroups.module.css'
 
@@ -11,7 +12,20 @@ type TaskGroupsProps = {
 }
 
 export function TaskGroups({ groups, showCompletedTime, selectedId, onOpen }: TaskGroupsProps) {
-  const { toggle, pending } = useToggleComplete()
+  const { toggle, pending, confirmDialog } = useToggleComplete()
+  // 初期状態はすべて開いた状態。閉じた親のIDだけを持つ
+  const [collapsed, setCollapsed] = useState<ReadonlySet<number>>(new Set())
+
+  const toggleExpand = (id: number) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
 
   return (
     <div className={styles.groups}>
@@ -24,21 +38,48 @@ export function TaskGroups({ groups, showCompletedTime, selectedId, onOpen }: Ta
             </h2>
           )}
           <ul className={styles.list}>
-            {group.items.map(({ task }) => (
-              <TaskRow
-                key={task.id}
-                task={task}
-                groupDate={group.date}
-                showCompletedTime={showCompletedTime}
-                selected={task.id === selectedId}
-                checked={pending?.task.id === task.id ? pending.status === 'DONE' : task.status === 'DONE'}
-                onToggle={toggle}
-                onOpen={onOpen}
-              />
-            ))}
+            {group.items.map(({ task, subtasks, contextOnly, progress }) => {
+              const expanded = !collapsed.has(task.id)
+              return (
+                <li key={task.id}>
+                  <TaskRow
+                    task={task}
+                    groupDate={group.date}
+                    showCompletedTime={showCompletedTime}
+                    selected={task.id === selectedId}
+                    checked={isChecked(task, pending)}
+                    onToggle={toggle}
+                    onOpen={onOpen}
+                    contextOnly={contextOnly}
+                    progress={progress}
+                    expanded={subtasks.length > 0 ? expanded : undefined}
+                    onToggleExpand={subtasks.length > 0 ? () => toggleExpand(task.id) : undefined}
+                  />
+                  {subtasks.length > 0 && expanded && (
+                    <ul className={styles.list} aria-label={`「${task.title}」のサブタスク`}>
+                      {subtasks.map((sub) => (
+                        <li key={sub.id}>
+                          <TaskRow
+                            task={sub}
+                            groupDate={group.date}
+                            showCompletedTime={showCompletedTime}
+                            selected={sub.id === selectedId}
+                            checked={isChecked(sub, pending)}
+                            onToggle={toggle}
+                            onOpen={onOpen}
+                            isSubtask
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         </section>
       ))}
+      {confirmDialog}
     </div>
   )
 }

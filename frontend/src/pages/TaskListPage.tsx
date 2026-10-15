@@ -62,9 +62,9 @@ export function TaskListPage({ view }: TaskListPageProps) {
         {view === 'today' && <span className={styles.date}>{formatDate(today)}</span>}
       </header>
 
-      {view === 'today' && <QuickAdd key={view} dueDate={today} dueHint="期限は今日" />}
-      {view === 'upcoming' && <QuickAdd key={view} dueDate={addDays(today, 1)} dueHint="期限は明日" />}
-      {view === 'no-due' && <QuickAdd key={view} dueDate={null} dueHint="期限なし" />}
+      {view === 'today' && <QuickAdd dueDate={today} placeholder="タスクを追加（Enterで登録・期限は今日）" />}
+      {view === 'upcoming' && <QuickAdd dueDate={addDays(today, 1)} placeholder="タスクを追加（Enterで登録・期限は明日）" />}
+      {view === 'no-due' && <QuickAdd dueDate={null} placeholder="タスクを追加（Enterで登録・期限なし）" />}
 
       {view === 'done' ? (
         <DoneList selectedId={selectedId} onOpen={handleOpen} />
@@ -78,6 +78,7 @@ export function TaskListPage({ view }: TaskListPageProps) {
           taskId={selectedId}
           onClose={() => guard(closePanel)}
           onDeleted={closePanel}
+          onOpenTask={handleOpen}
           onDirtyChange={setPanelDirty}
         />
       )}

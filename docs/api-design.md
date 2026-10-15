@@ -1,4 +1,4 @@
-# mytask-manager API設計 v1.0
+# mytask-manager API設計 v1.1
 
 [requirements.md](requirements.md) v1.1 と [screen-design.md](screen-design.md) v1.0 に基づく。
 
@@ -100,7 +100,7 @@
 | `contextOnly` | boolean | true のとき、親自身はビューの条件を満たしていない（薄く表示する） |
 | `subtasks` | TaskResponse[] | `contextOnly` が false ならすべてのサブタスク、true なら条件を満たすサブタスクだけ |
 | `progress` | object | `{ "done": 1, "total": 3 }`。件数はサブタスク全体で数える |
-| `viewDate` / `viewTime` | string \| null | グループ分けと並び順に使う日付・時刻。親と、表示されるサブタスクの中で最も早い期限 |
+| `viewDate` / `viewTime` | string \| null | グループ分けと並び順に使う日付・時刻。ビューの条件を満たしたタスク（親・サブタスク）の中で最も早い期限。完了済みビューでは、条件を満たしたタスクの最新の完了日（`viewTime` は null） |
 | `viewOverdue` | boolean | 今日ビューで「期限切れ」グループに入れるかどうか |
 
 ### 3.2 GET `/tasks?view={view}`
@@ -176,6 +176,7 @@ TaskResponse に次の項目を加えて返す。
 | `parentId` | | 存在するタスクであること。そのタスクがサブタスクなら `NESTED_SUBTASK` |
 
 - ステータスは常に `TODO` で作成する
+- 完了済みの親にサブタスクを追加した場合は、親を `IN_PROGRESS` に戻す（3.7 の差し戻しと同じ考え方）
 - レスポンス：201 と TaskResponse
 
 ### 3.6 PUT `/tasks/{id}`
@@ -345,3 +346,4 @@ TaskResponse に次の項目を加えて返す。
 | 日付 | 版 | 内容 |
 |---|---|---|
 | 2026-10-14 | 1.0 | 初版 |
+| 2026-10-15 | 1.1 | Phase 2 の実装に合わせて `viewDate` の定義を明確化。完了済みの親へのサブタスク追加時の動作を追記 |

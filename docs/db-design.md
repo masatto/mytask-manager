@@ -1,4 +1,4 @@
-# mytask-manager DB設計 v1.0
+# mytask-manager DB設計 v1.1
 
 [requirements.md](requirements.md) v1.1 と [api-design.md](api-design.md) v1.0 に基づく。
 
@@ -120,11 +120,11 @@ recurrence_rules 1 ──── 0..* rule_subtask_templates
 
 | テーブル | エンティティ | 補足 |
 |---|---|---|
-| tasks | `Task` | `parent` は `@ManyToOne(fetch = LAZY)`。`subtasks` は `@OneToMany(mappedBy = "parent")` で読み取り専用。`level` と `parent_level` は、`@PrePersist` で `parent` の有無から設定する |
+| tasks | `Task` | 親は関連にせず `parentId`（Long）で持つ。サブタスクは親IDの IN 句でまとめて取得する。`level` と `parent_level` は、`@PrePersist` で `parentId` の有無から設定する |
 | recurrence_rules | `RecurrenceRule` | `subtaskTemplates` は `@OneToMany(cascade = ALL, orphanRemoval = true)` + `@OrderBy("position")` |
 | rule_subtask_templates | `RuleSubtaskTemplate` | |
 
-- 一覧の取得で N+1 問題が起きないように、親とサブタスクは `JOIN FETCH`、または親のIDでまとめて取得する（IN 句）
+- 一覧の取得で N+1 問題が起きないように、親とサブタスクは親のIDでまとめて取得する（IN 句）
 
 ## 5. データの置き場所
 
@@ -142,3 +142,4 @@ recurrence_rules 1 ──── 0..* rule_subtask_templates
 | 日付 | 版 | 内容 |
 |---|---|---|
 | 2026-10-14 | 1.0 | 初版 |
+| 2026-10-15 | 1.1 | Phase 2 の実装に合わせて、`Task` の親を関連ではなく `parentId` で持つ形に変更 |
