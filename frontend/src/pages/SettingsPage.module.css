@@ -1,0 +1,63 @@
+.card {
+  max-width: 720px;
+  padding: 20px 24px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+
+.heading {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.description {
+  margin: 0 0 20px;
+  color: var(--color-text-sub);
+  font-size: 13px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.button {
+  min-width: 180px;
+  padding: 8px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--color-hover);
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.meta {
+  color: var(--color-text-sub);
+  font-size: 13px;
+}
+
+.fileInput {
+  display: none;
+}
+
+.error {
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fdecee;
+  color: var(--color-danger);
+  font-size: 13px;
+}

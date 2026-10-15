@@ -2,7 +2,7 @@ import type { Task, TaskListItem } from '../api/types.ts'
 
 export type RecordedRequest = { method: string; path: string; body: unknown }
 
-type Handler = (req: RecordedRequest) => { status: number; body?: unknown }
+type Handler = (req: RecordedRequest) => { status: number; body?: unknown; headers?: Record<string, string> }
 
 /**
  * fetch を差し替えるテスト用の簡易APIサーバー。
@@ -15,7 +15,7 @@ export function installFakeApi(handlers: Record<string, Handler>) {
     const req: RecordedRequest = {
       method: init?.method ?? 'GET',
       path: url.pathname.replace(/^\/api/, '') + url.search,
-      body: init?.body ? JSON.parse(String(init.body)) : undefined,
+      body: init?.body ? parseBody(String(init.body)) : undefined,
     }
     requests.push(req)
     const key = `${req.method} ${req.path}`
@@ -23,11 +23,20 @@ export function installFakeApi(handlers: Record<string, Handler>) {
     const res = handler ? handler(req) : { status: 404, body: { code: 'NOT_FOUND', message: 'not found' } }
     return new Response(res.status === 204 ? null : JSON.stringify(res.body ?? {}), {
       status: res.status,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...res.headers },
     })
   })
   vi.stubGlobal('fetch', fetchMock)
   return { requests }
+}
+
+/** JSON として読めない本文（不正なファイルのテストなど）は文字列のまま記録する */
+function parseBody(body: string): unknown {
+  try {
+    return JSON.parse(body)
+  } catch {
+    return body
+  }
 }
 
 export function makeTask(overrides: Partial<Task> = {}): Task {
