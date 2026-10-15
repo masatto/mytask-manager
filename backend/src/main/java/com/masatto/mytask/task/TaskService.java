@@ -50,6 +50,11 @@ public class TaskService {
 
     public TaskListResponse list(TaskView view, int offset, int limit) {
         LocalDateTime now = LocalDateTime.now(clock);
+        if (view == TaskView.DONE_TODAY) {
+            List<Task> matched = taskRepository.findDoneBetween(startOfDay(now.toLocalDate()),
+                    startOfDay(now.toLocalDate().plusDays(1)));
+            return new TaskListResponse(builderFor(matched, now).buildDone(matched), false);
+        }
         if (view == TaskView.DONE) {
             return listDone(offset, limit, now);
         }
@@ -101,7 +106,7 @@ public class TaskService {
             case TODAY -> due -> due != null && !due.isAfter(today);
             case UPCOMING -> due -> due != null && due.isAfter(today);
             case NO_DUE -> due -> due == null;
-            case DONE -> throw new IllegalArgumentException("DONE is not an open view");
+            case DONE, DONE_TODAY -> throw new IllegalArgumentException(view + " is not an open view");
         };
     }
 

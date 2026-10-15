@@ -3,6 +3,7 @@ import {
   createTask,
   deleteTask,
   fetchTask,
+  fetchDoneToday,
   fetchTaskCounts,
   fetchTaskList,
   searchTasks,
@@ -38,6 +39,10 @@ export function useTaskSearch(q: string) {
     queryFn: () => searchTasks(q),
     enabled: q.trim() !== '',
   })
+}
+
+export function useDoneTodayList() {
+  return useQuery({ queryKey: taskKeys.doneToday(), queryFn: fetchDoneToday })
 }
 
 export function useTaskCounts() {

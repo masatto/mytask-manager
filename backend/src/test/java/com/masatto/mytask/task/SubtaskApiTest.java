@@ -396,6 +396,31 @@ class SubtaskApiTest {
     }
 
     @Test
+    void 今日完了ビューは件数と同じ基準で親タスクを並べる() throws Exception {
+        long yesterday = createTask("""
+                {"title":"昨日完了"}
+                """);
+        clock.set(TestClockConfig.NOW.minusDays(1));
+        changeStatus(yesterday, "{\"status\":\"DONE\"}");
+        clock.set(TestClockConfig.NOW);
+        long parent = createTask("""
+                {"title":"今日完了（サブタスクつき）"}
+                """);
+        createSubtask(parent, "\"title\":\"子\"");
+        changeStatus(parent, "{\"status\":\"DONE\",\"completeSubtasks\":true}");
+        clock.set(TestClockConfig.NOW.plusMinutes(5));
+        long other = createTask("""
+                {"title":"今日完了"}
+                """);
+        changeStatus(other, "{\"status\":\"DONE\"}");
+
+        list("done-today")
+                .andExpect(jsonPath("$.items[*].task.title", contains("今日完了", "今日完了（サブタスクつき）")))
+                .andExpect(jsonPath("$.items[1].subtasks[*].title", contains("子")));
+        mockMvc.perform(get("/api/tasks/counts")).andExpect(jsonPath("$.doneToday").value(2));
+    }
+
+    @Test
     void 親を削除するとサブタスクも削除される() throws Exception {
         long parent = createTask("""
                 {"title":"親"}

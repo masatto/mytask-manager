@@ -2,8 +2,8 @@ import { useTaskCounts } from '../hooks/useTasks.ts'
 import styles from './TodayProgress.module.css'
 
 /**
- * Today の進み具合。今日完了にした数 ／（それ ＋ 今日の残り）。
- * 残りは Today ビューの行数（期限切れを含む）。今日完了にしたものは期限に関係なく数える。
+ * Today の進み具合。「N件完了・残りM件」とバー（N ／ (N＋M)）。
+ * 完了は今日完了にした親タスクの数で、Today の一番下の「今日完了」に並ぶものと同じ。残りは Today ビューの行数（期限切れを含む）。
  */
 export function TodayProgress() {
   const { data } = useTaskCounts()
@@ -18,12 +18,12 @@ export function TodayProgress() {
   }
   const percent = Math.round((done / total) * 100)
   return (
-    <span className={styles.progress} role="img" aria-label={`今日の進み具合：${total}件中${done}件完了`}>
+    <span className={styles.progress} role="img" aria-label={`今日の進み具合：${done}件完了、残り${data.today}件`}>
       <span className={styles.bar}>
         <span className={styles.fill} style={{ width: `${percent}%` }} />
       </span>
       <span className={styles.text}>
-        {done}/{total} 完了
+        {done}件完了・残り{data.today}件
       </span>
     </span>
   )
