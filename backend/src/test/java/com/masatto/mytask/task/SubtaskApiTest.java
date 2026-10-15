@@ -209,6 +209,32 @@ class SubtaskApiTest {
         }
 
         @Test
+        void 期限のないサブタスクは親の期限に従い_期限なしビューに親を引き込まない() throws Exception {
+            long parent = createTask("""
+                    {"title":"週次の振り返り","dueDate":"2026-10-14"}
+                    """);
+            createSubtask(parent, "\"title\":\"アウトプット確認\"");
+
+            list("no-due").andExpect(jsonPath("$.items", hasSize(0)));
+            list("today")
+                    .andExpect(jsonPath("$.items", hasSize(1)))
+                    .andExpect(jsonPath("$.items[0].viewDate").value("2026-10-14"));
+            mockMvc.perform(get("/api/tasks/counts")).andExpect(jsonPath("$.noDue").value(0));
+        }
+
+        @Test
+        void 親も期限なしならサブタスクは期限なしビューに出る() throws Exception {
+            long parent = createTask("""
+                    {"title":"本棚の整理"}
+                    """);
+            createSubtask(parent, "\"title\":\"古本を売る\"");
+
+            list("no-due")
+                    .andExpect(jsonPath("$.items", hasSize(1)))
+                    .andExpect(jsonPath("$.items[0].contextOnly").value(false));
+        }
+
+        @Test
         void 件数は行の数と一致する() throws Exception {
             long parent = createTask("""
                     {"title":"親","dueDate":"2026-10-14"}

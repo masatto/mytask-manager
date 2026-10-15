@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useSearchParams } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 import { ConfirmDialog } from '../components/ConfirmDialog.tsx'
 import { QuickAdd } from '../components/QuickAdd.tsx'
 import { TaskDetailPanel } from '../components/TaskDetailPanel.tsx'
@@ -21,6 +21,7 @@ type ListProps = {
 
 export function TaskListPage({ view }: TaskListPageProps) {
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
   const selectedId = Number(searchParams.get('task')) || null
   // 詳細パネルに未保存の変更があるか（D4 の判定に使う）
   const [panelDirty, setPanelDirty] = useState(false)
@@ -79,6 +80,7 @@ export function TaskListPage({ view }: TaskListPageProps) {
           onClose={() => guard(closePanel)}
           onDeleted={closePanel}
           onOpenTask={handleOpen}
+          onOpenRule={(ruleId) => guard(() => navigate(`/rules?rule=${ruleId}`))}
           onDirtyChange={setPanelDirty}
         />
       )}

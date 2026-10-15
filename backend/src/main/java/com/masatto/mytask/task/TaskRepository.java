@@ -1,5 +1,6 @@
 package com.masatto.mytask.task;
 
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 
@@ -17,4 +18,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     List<Task> findByParentIdInOrderByIdAsc(Collection<Long> parentIds);
 
     List<Task> findByParentIdOrderByIdAsc(Long parentId);
+
+    /** 同じルールの同じ回が生成済みか（二重生成の防止） */
+    boolean existsByRecurrenceRuleIdAndOccurrenceDate(Long recurrenceRuleId, LocalDate occurrenceDate);
 }

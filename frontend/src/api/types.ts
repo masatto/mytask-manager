@@ -82,3 +82,37 @@ export const STATUS_LABELS: Record<TaskStatus, string> = {
   IN_PROGRESS: '進行中',
   DONE: '完了',
 }
+
+/** api-design 4章：繰り返しルール */
+
+export type PatternType = 'DAILY' | 'WEEKLY' | 'MONTHLY'
+export type Weekday = 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN'
+
+export type Pattern = {
+  type: PatternType
+  daysOfWeek: Weekday[] | null
+  /** 1〜31、または -1（末日） */
+  dayOfMonth: number | null
+}
+
+export type SubtaskTemplate = { title: string; priority: Priority }
+
+export type RuleInput = {
+  title: string
+  memo: string | null
+  priority: Priority
+  dueTime: string | null
+  pattern: Pattern
+  startDate: string
+  endDate: string | null
+  active: boolean
+  subtaskTemplates: SubtaskTemplate[]
+}
+
+export type Rule = RuleInput & {
+  id: number
+  nextOccurrence: string | null
+  lastGeneratedDate: string | null
+  createdAt: string
+  updatedAt: string
+}

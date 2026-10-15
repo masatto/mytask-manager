@@ -6,6 +6,7 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -40,7 +41,10 @@ public record TaskResponse(
     public record ParentSummary(Long id, String title) {
     }
 
-    public static TaskResponse of(Task task, LocalDateTime now, ZoneId zone) {
+    /**
+     * @param ruleTitles 生成元ルールのID → タイトル。ルールが削除済みなら ruleId も ruleTitle も null になる
+     */
+    public static TaskResponse of(Task task, LocalDateTime now, ZoneId zone, Map<Long, String> ruleTitles) {
         return new TaskResponse(
                 task.getId(),
                 task.getTitle(),
@@ -52,9 +56,10 @@ public record TaskResponse(
                 task.getCompletedAt() == null ? null : task.getCompletedAt().atZone(zone).toOffsetDateTime(),
                 task.isOverdue(now),
                 task.getParentId(),
-                // ルール名の解決は Phase 3 で実装する
                 task.getOccurrenceDate() == null ? null
-                        : new Recurrence(task.getRecurrenceRuleId(), null, task.getOccurrenceDate()),
+                        : new Recurrence(task.getRecurrenceRuleId(),
+                                task.getRecurrenceRuleId() == null ? null : ruleTitles.get(task.getRecurrenceRuleId()),
+                                task.getOccurrenceDate()),
                 task.getCreatedAt().atZone(zone).toOffsetDateTime(),
                 task.getUpdatedAt().atZone(zone).toOffsetDateTime(),
                 null,

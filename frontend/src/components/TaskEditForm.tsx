@@ -71,9 +71,18 @@ type TaskEditFormProps = {
   onDeleted: () => void
   onDirtyChange: (dirty: boolean) => void
   onOpenTask: (id: number) => void
+  /** 生成元の繰り返しルールを開く */
+  onOpenRule: (ruleId: number) => void
 }
 
-export function TaskEditForm({ task, onClose, onDeleted, onDirtyChange, onOpenTask }: TaskEditFormProps) {
+export function TaskEditForm({
+  task,
+  onClose,
+  onDeleted,
+  onDirtyChange,
+  onOpenTask,
+  onOpenRule,
+}: TaskEditFormProps) {
   const {
     register,
     handleSubmit,
@@ -271,7 +280,20 @@ export function TaskEditForm({ task, onClose, onDeleted, onDirtyChange, onOpenTa
           <>
             <dt>繰り返し</dt>
             <dd className={styles.readonly}>
-              {task.recurrence.ruleTitle ?? 'ルールから生成'}（{formatDate(task.recurrence.occurrenceDate)}分）
+              {task.recurrence.ruleId !== null ? (
+                <>
+                  {task.recurrence.ruleTitle}（{formatDate(task.recurrence.occurrenceDate)}分）
+                  <button
+                    type="button"
+                    className={styles.ruleLink}
+                    onClick={() => onOpenRule(task.recurrence!.ruleId!)}
+                  >
+                    → ルールを開く
+                  </button>
+                </>
+              ) : (
+                <>削除されたルールから生成（{formatDate(task.recurrence.occurrenceDate)}分）</>
+              )}
             </dd>
           </>
         )}
