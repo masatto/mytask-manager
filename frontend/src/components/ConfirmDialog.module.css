@@ -21,6 +21,13 @@
   line-height: 1.6;
 }
 
+.detail {
+  margin: -16px 0 24px;
+  color: var(--color-text-sub);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;

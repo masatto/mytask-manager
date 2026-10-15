@@ -62,7 +62,8 @@ describe('S5 設定（バックアップ）', () => {
     await user.upload(await screen.findByLabelText('インポートするファイル'), backupFile(JSON.stringify(BACKUP)))
 
     const dialog = await screen.findByRole('alertdialog', {
-      name: '現在のデータはすべて置き換えられます。（タスク120件 → 85件、ルール4件 → 3件）',
+      name: '現在のデータはすべて置き換えられます。',
+      description: 'タスク 120件 → 85件 ／ ルール 4件 → 3件',
     })
     expect(requests.some((r) => r.path === '/backup/import?dryRun=false')).toBe(false)
 
