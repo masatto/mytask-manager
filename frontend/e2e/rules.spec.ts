@@ -18,7 +18,7 @@ test('今日の曜日の繰り返しルールを作ると今日の分が生成�
   await expect(page.locator('tbody tr', { hasText: title })).toContainText('毎週')
 
   // 今日ビューに生成されたタスク（↻・サブタスクつき）
-  await page.getByRole('link', { name: /^今日/ }).click()
+  await page.getByRole('link', { name: /^Today/ }).click()
   const row = page.locator('li', { has: page.getByRole('button', { name: title, exact: true }) })
   await expect(row.getByRole('img', { name: '繰り返し' })).toBeVisible()
   await expect(row).toContainText('アウトプット確認')

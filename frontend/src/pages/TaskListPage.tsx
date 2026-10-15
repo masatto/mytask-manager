@@ -1,3 +1,4 @@
+import { PageTitle } from '../components/PageTitle.tsx'
 import { QuickAdd } from '../components/QuickAdd.tsx'
 import { TaskGroups } from '../components/TaskGroups.tsx'
 import { useDoneTaskList, useOpenTaskList } from '../hooks/useTasks.ts'
@@ -20,14 +21,11 @@ export function TaskListPage({ view }: TaskListPageProps) {
   const { selectedId, open: handleOpen, panel } = useTaskPanel()
 
   const today = todayKey()
-  const label = VIEWS.find((v) => v.key === view)?.label
+  const viewDef = VIEWS.find((v) => v.key === view)!
 
   return (
     <div className={selectedId ? styles.withPanel : undefined}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>{label}</h1>
-        {view === 'today' && <span className={styles.date}>{formatDate(today)}</span>}
-      </header>
+      <PageTitle label={viewDef.label} sub={viewDef.sub} extra={view === 'today' ? formatDate(today) : undefined} />
 
       {view === 'today' && <QuickAdd dueDate={today} placeholder="タスクを追加（Enterで登録・期限は今日）" />}
       {view === 'upcoming' && <QuickAdd dueDate={addDays(today, 1)} placeholder="タスクを追加（Enterで登録・期限は明日）" />}

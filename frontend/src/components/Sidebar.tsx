@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { NavLink } from 'react-router'
 import type { TaskCounts } from '../api/types.ts'
 import { useTaskCounts } from '../hooks/useTasks.ts'
-import { VIEWS, type ViewKey } from '../views.ts'
+import { PAGE_TITLES, VIEWS, type ViewKey } from '../views.ts'
 import { Logo } from './Logo.tsx'
 import { SearchBox } from './SearchBox.tsx'
 import styles from './Sidebar.module.css'
@@ -44,7 +44,7 @@ export function Sidebar() {
           return (
             <li key={view.key}>
               <NavLink to={view.path} className={linkClass}>
-                {view.label}
+                <NavLabel label={view.label} sub={view.sub} />
                 {count !== undefined && count > 0 && (
                   <span
                     className={alert ? `${styles.count} ${styles.alert}` : styles.count}
@@ -62,12 +62,12 @@ export function Sidebar() {
       <ul className={styles.list}>
         <li>
           <NavLink to="/rules" className={linkClass}>
-            繰り返しルール
+            <NavLabel {...PAGE_TITLES.rules} />
           </NavLink>
         </li>
         <li>
           <NavLink to="/settings" className={linkClass}>
-            設定
+            <NavLabel {...PAGE_TITLES.settings} />
           </NavLink>
         </li>
       </ul>
@@ -75,5 +75,14 @@ export function Sidebar() {
         <kbd>N</kbd> 追加 ・ <kbd>/</kbd> 検索 ・ <kbd>Esc</kbd> 閉じる
       </p>
     </nav>
+  )
+}
+
+/** メニューの項目名。英語を大きく、日本語を小さく2段で出す */
+function NavLabel({ label, sub }: { label: string; sub: string }) {
+  return (
+    <span className={styles.labels}>
+      <span className={styles.labelEn}>{label}</span> <span className={styles.labelJa}>{sub}</span>
+    </span>
   )
 }

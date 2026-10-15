@@ -10,18 +10,7 @@
   }
 }
 
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
 
-.title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-}
 
 .newButton {
   padding: 8px 14px;

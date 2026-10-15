@@ -32,7 +32,7 @@ test('タスクを追加し、詳細パネルで編集し、完了して元に�
 
   // 完了して完了済みビューへ
   await row.getByRole('checkbox').click()
-  await page.getByRole('link', { name: /^完了済み/ }).click()
+  await page.getByRole('link', { name: /^Done/ }).click()
   await expect(page.getByRole('button', { name: title, exact: true })).toBeVisible()
 })
 
@@ -43,7 +43,7 @@ test('未保存の変更があるとき、サイドバーで移動しようと�
   await page.getByRole('button', { name: title, exact: true }).click()
   await taskPanel(page).getByRole('textbox', { name: 'タイトル' }).fill(`${title}（編集中）`)
 
-  await page.getByRole('link', { name: /^今日/ }).click()
+  await page.getByRole('link', { name: /^Today/ }).click()
   const dialog = page.getByRole('alertdialog', { name: '変更を破棄しますか？' })
   await expect(dialog).toBeVisible()
   await dialog.getByRole('button', { name: '編集に戻る' }).click()

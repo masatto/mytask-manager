@@ -1,7 +1,9 @@
 import { useSearchParams } from 'react-router'
+import { PageTitle } from '../components/PageTitle.tsx'
 import { TaskGroups } from '../components/TaskGroups.tsx'
 import { useTaskPanel } from '../hooks/useTaskPanel.tsx'
 import { useTaskSearch } from '../hooks/useTasks.ts'
+import { PAGE_TITLES } from '../views.ts'
 import styles from './TaskListPage.module.css'
 
 /** 検索結果（/search?q=…）。タイトル・メモの部分一致で、完了済みも含む */
@@ -13,10 +15,7 @@ export function SearchPage() {
 
   return (
     <div className={selectedId ? styles.withPanel : undefined}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>検索</h1>
-        {q && <span className={styles.date}>「{q}」</span>}
-      </header>
+      <PageTitle {...PAGE_TITLES.search} extra={q ? `「${q}」` : undefined} />
 
       {q === '' ? (
         <p className={styles.empty}>サイドバーの検索欄に語を入れて Enter を押してください</p>

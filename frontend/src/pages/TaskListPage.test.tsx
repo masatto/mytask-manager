@@ -169,7 +169,7 @@ describe('TaskListPage', () => {
 
     const panel = await screen.findByRole('complementary', { name: 'タスク詳細' })
     await user.type(await within(panel).findByRole('textbox', { name: 'タイトル' }), '!')
-    await user.click(screen.getByRole('link', { name: /^今日/ }))
+    await user.click(screen.getByRole('link', { name: /^Today/ }))
 
     const dialog = await screen.findByRole('alertdialog', { name: '変更を破棄しますか？' })
     expect(router.state.location.pathname).toBe('/no-due')

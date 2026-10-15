@@ -82,3 +82,22 @@
   font-family: inherit;
   font-size: 11px;
 }
+
+.labels {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.2;
+}
+
+.labelEn {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.labelJa {
+  color: var(--color-text-sub);
+  font-size: 11px;
+  font-weight: 400;
+}

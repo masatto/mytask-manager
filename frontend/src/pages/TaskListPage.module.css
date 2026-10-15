@@ -10,23 +10,8 @@
   }
 }
 
-.header {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  margin-bottom: 20px;
-}
 
-.title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-}
 
-.date {
-  color: var(--color-text-sub);
-  font-size: 15px;
-}
 
 .empty {
   margin: 48px 0;

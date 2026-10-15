@@ -3,9 +3,10 @@ import { useRef, useState, type ChangeEvent } from 'react'
 import { ApiRequestError } from '../api/client.ts'
 import { exportBackup, fetchAutoBackupStatus, importBackup, type ImportSummary } from '../api/backup.ts'
 import { ConfirmDialog } from '../components/ConfirmDialog.tsx'
+import { PageTitle } from '../components/PageTitle.tsx'
 import { formatDateTime } from '../lib/date.ts'
 import { useToast } from '../toast/useToast.ts'
-import pageStyles from './Page.module.css'
+import { PAGE_TITLES } from '../views.ts'
 import styles from './SettingsPage.module.css'
 
 /** 最終エクスポート日時はこのブラウザにだけ保存する目安（screen-design 7章） */
@@ -110,7 +111,7 @@ export function SettingsPage() {
 
   return (
     <section>
-      <h1 className={pageStyles.title}>設定</h1>
+      <PageTitle {...PAGE_TITLES.settings} />
 
       <section className={styles.card} aria-labelledby="backup-heading">
         <h2 id="backup-heading" className={styles.heading}>

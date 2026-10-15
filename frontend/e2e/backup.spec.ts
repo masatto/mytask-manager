@@ -8,7 +8,7 @@ test('エクスポートしたファイルをインポートすると、その�
   await quickAdd(page, kept)
 
   // エクスポート
-  await page.getByRole('link', { name: '設定' }).click()
+  await page.getByRole('link', { name: /^Settings/ }).click()
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('button', { name: 'JSONをエクスポート' }).click(),
@@ -19,16 +19,16 @@ test('エクスポートしたファイルをインポートすると、その�
   await expect(page.getByText(/最終エクスポート：\d+\/\d+ \d\d:\d\d/)).toBeVisible()
 
   // データを変えてからインポートで戻す
-  await page.getByRole('link', { name: /^期限なし/ }).click()
+  await page.getByRole('link', { name: /^Someday/ }).click()
   await quickAdd(page, added)
-  await page.getByRole('link', { name: '設定' }).click()
+  await page.getByRole('link', { name: /^Settings/ }).click()
   await page.getByLabel('インポートするファイル').setInputFiles(file)
   const dialog = page.getByRole('alertdialog', { name: '現在のデータはすべて置き換えられます。' })
   await expect(dialog).toBeVisible()
   await dialog.getByRole('button', { name: '置き換える' }).click()
   await expect(page.getByText('backup.json からインポートしました')).toBeVisible()
 
-  await page.getByRole('link', { name: /^期限なし/ }).click()
+  await page.getByRole('link', { name: /^Someday/ }).click()
   await expect(page.getByRole('button', { name: kept, exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: added, exact: true })).toBeHidden()
 })

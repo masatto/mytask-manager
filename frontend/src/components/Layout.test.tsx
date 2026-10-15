@@ -9,15 +9,15 @@ describe('Layout', () => {
     installFakeApi({ 'GET /tasks/counts': () => EMPTY_COUNTS, 'GET /tasks?view=today': () => EMPTY_LIST })
     renderApp('/')
 
-    expect(await screen.findByRole('heading', { name: '今日' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '今日' })).toHaveAttribute('aria-current', 'page')
+    expect(await screen.findByRole('heading', { name: 'Today 今日' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /^Today 今日/ })).toHaveAttribute('aria-current', 'page')
   })
 
   test('サイドバーに全ビューと設定へのリンクがある', async () => {
     installFakeApi({ 'GET /tasks/counts': () => EMPTY_COUNTS, 'GET /tasks?view=today': () => EMPTY_LIST })
     renderApp('/today')
 
-    for (const name of ['今日', '今後', '期限なし', '完了済み', '繰り返しルール', '設定']) {
+    for (const name of ['Today 今日', 'Upcoming これから', 'Someday いつか', 'Done 完了', 'Routines 繰り返し', 'Settings 設定']) {
       expect(await screen.findByRole('link', { name: new RegExp(`^${name}`) })).toBeInTheDocument()
     }
   })
@@ -33,6 +33,6 @@ describe('Layout', () => {
     expect(await within(nav).findByLabelText('5件（期限切れあり）')).toBeInTheDocument()
     expect(within(nav).getByLabelText('12件')).toBeInTheDocument()
     // 0件のときは件数を出さない
-    expect(within(nav).getByRole('link', { name: '期限なし' })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: 'Someday いつか' })).toBeInTheDocument()
   })
 })
