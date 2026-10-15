@@ -1,4 +1,4 @@
-# mytask-manager API設計 v1.4
+# mytask-manager API設計 v1.5
 
 [requirements.md](requirements.md) v1.1 と [screen-design.md](screen-design.md) v1.0 に基づく。
 
@@ -44,8 +44,20 @@
 | 400 | `NESTED_SUBTASK` | サブタスクの下にサブタスクを作ろうとした |
 | 400 | `INVALID_BACKUP` | インポートファイルの形式が不正 |
 | 404 | `NOT_FOUND` | 対象が存在しない |
+| 403 | `FORBIDDEN` | この PC 以外を指す宛先（Host）、または別のサイトからの更新（下の「接続の制限」） |
 | 409 | `SUBTASKS_INCOMPLETE` | 未完了のサブタスクが残る親を、一括完了の指定なしで完了にしようとした |
+| 415 | `UNSUPPORTED_MEDIA_TYPE` | POST の Content-Type が application/json でない |
 | 500 | `INTERNAL_ERROR` | 想定外のエラー |
+
+### 接続の制限
+
+ログイン機能がないため、次の3つで「この PC の Orbit の画面からの操作」だけを受け付ける（`LocalOnlyRequestFilter`）。
+
+1. サーバーは `127.0.0.1` だけで待ち受ける（同じネットワークの他の PC からは接続できない）
+2. 宛先（Host）が `127.0.0.1` / `localhost` 以外のリクエストは、読み取りも含めて拒否する（DNS リバインディング対策）
+3. 更新系（GET 以外）で、別のサイトから送られたもの（`Origin` が別のホスト、または `Sec-Fetch-Site` が `same-origin` / `none` 以外）は拒否する。さらに POST は JSON 以外を受け付けない（ブラウザの事前確認なしで送れる「単純なリクエスト」で、別のサイトがインポートや復元を実行するのを防ぐ）
+
+curl などブラウザ以外からのリクエストは `Origin` を付けないので、この PC からなら使える（POST は `Content-Type: application/json` が必要）。
 
 ## 2. エンドポイント一覧
 
@@ -383,3 +395,4 @@ TaskResponse に次の項目を加えて返す。
 | 2026-10-15 | 1.2 | 期限のないサブタスクは親の期限でビューを判定。ルールの更新・再開時にも生成処理を実行 |
 | 2026-10-15 | 1.3 | 検索（3.10）と自動バックアップ（6.3）を追加 |
 | 2026-10-15 | 1.4 | 件数に `doneToday` を追加（3.3）。自動バックアップからの復元（6.4）を追加 |
+| 2026-10-15 | 1.5 | 接続の制限（別のサイトからの操作・DNS リバインディングの拒否）と 403・415 を追加 |
