@@ -70,7 +70,7 @@
 /* 横線（サブタスクのチェックボックスの手前まで） */
 .subtaskItem::after {
   top: calc(50% - 1px);
-  width: 33px;
+  width: 41px;
   height: 2px;
 }
 

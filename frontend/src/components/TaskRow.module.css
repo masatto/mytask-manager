@@ -110,10 +110,10 @@ button.expander:hover {
 
 .subtask {
   /*
-   * 親のタイトルの開始位置まで字下げする：余白 12 ＋ 開閉 18 ＋ チェック 16 ＋ 優先度 14 ＋ 間隔 10×3 ＝ 90px。
+   * 親のタイトルの開始位置まで字下げする：余白 12 ＋ 開閉 18 ＋ チェック 16 ＋ 優先度の場所 22 ＋ 間隔 10×3 ＝ 98px。
    * 左の空いた所に、親とつなぐガイド線を引く（TaskGroups.module.css）
    */
-  padding-left: 90px;
+  padding-left: 98px;
   min-height: 34px;
 }
 
