@@ -130,4 +130,26 @@
 		</plugins>
 	</build>
 
+	<profiles>
+		<!-- 普段使い用のアプリ（画面を組み込んだ orbit.jar）を作る。build.bat から mvnw -Papp package で使う -->
+		<profile>
+			<id>app</id>
+			<build>
+				<!-- 開発中に spring-boot:run で使う target/ を壊さないよう、別のフォルダーに作る -->
+				<directory>${project.basedir}/target-app</directory>
+				<finalName>orbit</finalName>
+				<resources>
+					<resource>
+						<directory>src/main/resources</directory>
+					</resource>
+					<!-- フロントエンドのビルド結果（npm run build）を static として組み込む -->
+					<resource>
+						<directory>${project.basedir}/../frontend/dist</directory>
+						<targetPath>static</targetPath>
+					</resource>
+				</resources>
+			</build>
+		</profile>
+	</profiles>
+
 </project>

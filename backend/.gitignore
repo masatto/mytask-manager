@@ -31,3 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# build.bat が作る普段使い用アプリのビルド先
+target-app/

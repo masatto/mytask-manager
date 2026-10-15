@@ -11,9 +11,23 @@ spring:
     open-in-view: false
   h2:
     console:
-      enabled: true
+      # SQL を自由に実行できる管理画面。アプリでは使わないので無効にしておく
+      enabled: false
   jackson:
     time-zone: Asia/Tokyo
+  web:
+    resources:
+      cache:
+        # jar の中のファイルは更新日時が 1980 年に固定されるため、更新日時での「変更なし」判定は使わない
+        # （使うと、作り直した後も古い画面がブラウザに残る）
+        use-last-modified: false
+        cachecontrol:
+          # 組み込んだ画面（static）を更新したとき、古い画面が使われ続けないよう毎回確認させる
+          no-cache: true
+
+server:
+  # 自分の PC からだけ接続できるようにする（認証がないので、同じネットワークの他の PC には公開しない）
+  address: 127.0.0.1
 
 mytask:
   # データベースファイルの置き場所。リポジトリの外に置き、git clean等で消えないようにする

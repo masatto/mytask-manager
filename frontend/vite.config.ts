@@ -11,8 +11,13 @@ export default defineConfig({
     port: 5173,
     // /api をバックエンドへ転送する。同一オリジンになるのでCORS設定は不要
     proxy: {
-      '/api': `http://localhost:${apiPort}`,
+      // バックエンドは 127.0.0.1 だけで待ち受けるので、localhost（IPv6 の ::1 になることがある）ではなく明示する
+      '/api': `http://127.0.0.1:${apiPort}`,
     },
+  },
+  build: {
+    // 自分の PC から読み込むアプリなので、ファイルを分割しなくてよい（500KB 超の警告を出さない）
+    chunkSizeWarningLimit: 1024,
   },
   test: {
     environment: 'jsdom',
