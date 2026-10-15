@@ -64,13 +64,14 @@ describe('groupItems', () => {
     ])
   })
 
-  test('完了済みビューは完了日ごとに分ける', () => {
+  test('完了済みビューはサーバーが返す完了日（viewDate）ごとに分ける', () => {
     const groups = groupItems(
       'done',
       [
-        item({ completedAt: '2026-10-14T09:12:00+09:00' }),
-        item({ completedAt: '2026-10-14T00:30:00+09:00' }),
-        item({ completedAt: '2026-10-13T23:59:00+09:00' }),
+        item({ completedAt: '2026-10-14T09:12:00+09:00', viewDate: '2026-10-14' }),
+        // 親がコンテキスト表示の行は親に完了日時がないので、viewDate で分ける
+        item({ viewDate: '2026-10-14', contextOnly: true }),
+        item({ completedAt: '2026-10-13T23:59:00+09:00', viewDate: '2026-10-13' }),
       ],
       TODAY,
     )

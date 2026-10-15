@@ -5,14 +5,16 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.Comparator;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,92 +38,121 @@ public class TaskService {
 
     static final int DONE_PAGE_MAX = 100;
 
-    /**
-     * 完了済み以外のビューの並び順（api-design 3.2）。
-     * 期限日（なしは最後）→ 期限時刻（なしはその日の最後）→ 優先度 → 作成日時。
-     */
-    private static final Comparator<TaskListItem> OPEN_ORDER = Comparator
-            .comparing(TaskListItem::viewDate, Comparator.nullsLast(Comparator.naturalOrder()))
-            .thenComparing(TaskListItem::viewTime, Comparator.nullsLast(Comparator.naturalOrder()))
-            .thenComparing((TaskListItem i) -> i.task().priority())
-            .thenComparing(i -> i.task().createdAt())
-            .thenComparing(i -> i.task().id());
-
     private final TaskRepository taskRepository;
     private final Clock clock;
 
+    // ---- 一覧・件数 ----------------------------------------------------------
+
     public TaskListResponse list(TaskView view, int offset, int limit) {
+        LocalDateTime now = LocalDateTime.now(clock);
         if (view == TaskView.DONE) {
-            return listDone(offset, limit);
+            return listDone(offset, limit, now);
         }
-        LocalDateTime now = LocalDateTime.now(clock);
-        List<TaskListItem> items = findOpen(view, now.toLocalDate()).stream()
-                .map(task -> toListItem(task, now))
-                .sorted(OPEN_ORDER)
-                .toList();
-        return new TaskListResponse(items, false);
-    }
-
-    private List<Task> findOpen(TaskView view, LocalDate today) {
-        return switch (view) {
-            case TODAY -> taskRepository.findOpenDueOnOrBefore(today);
-            case UPCOMING -> taskRepository.findOpenDueAfter(today);
-            case NO_DUE -> taskRepository.findOpenWithoutDue();
-            case DONE -> throw new IllegalArgumentException("DONE is not an open view");
-        };
-    }
-
-    private TaskListResponse listDone(int offset, int limit) {
-        if (offset < 0 || limit < 1 || limit > DONE_PAGE_MAX) {
-            throw ApiException.validation("limit", "offset/limit の値が不正です");
-        }
-        LocalDateTime now = LocalDateTime.now(clock);
-        // 1件多く取得して、続きがあるかを判定する
-        List<Task> tasks = taskRepository.findDone(new OffsetPageRequest(offset, limit + 1));
-        boolean hasMore = tasks.size() > limit;
-        List<TaskListItem> items = tasks.stream()
-                .limit(limit)
-                .map(task -> toListItem(task, now))
-                .toList();
-        return new TaskListResponse(items, hasMore);
-    }
-
-    private TaskListItem toListItem(Task task, LocalDateTime now) {
-        TaskResponse response = TaskResponse.of(task, now, clock.getZone());
-        // Phase 1 は親タスクのみ。サブタスクのまとめは Phase 2 で実装する
-        return new TaskListItem(response, false, List.of(), new TaskListItem.Progress(0, 0),
-                task.getDueDate(), task.getDueTime(), response.overdue());
+        return new TaskListResponse(openItems(view, taskRepository.findByStatusNot(TaskStatus.DONE), now), false);
     }
 
     public TaskCountsResponse counts() {
         LocalDateTime now = LocalDateTime.now(clock);
-        LocalDate today = now.toLocalDate();
-        List<Task> todayTasks = taskRepository.findOpenDueOnOrBefore(today);
-        int overdue = (int) todayTasks.stream().filter(t -> t.isOverdue(now)).count();
+        List<Task> open = taskRepository.findByStatusNot(TaskStatus.DONE);
+        List<TaskListItem> today = openItems(TaskView.TODAY, open, now);
         return new TaskCountsResponse(
-                todayTasks.size(),
-                overdue,
-                taskRepository.findOpenDueAfter(today).size(),
-                taskRepository.findOpenWithoutDue().size());
+                today.size(),
+                (int) today.stream().filter(TaskListItem::viewOverdue).count(),
+                openItems(TaskView.UPCOMING, open, now).size(),
+                openItems(TaskView.NO_DUE, open, now).size());
     }
+
+    /** 未完了ビューの行。件数はこの行数と一致させる（api-design 3.3） */
+    private List<TaskListItem> openItems(TaskView view, List<Task> openTasks, LocalDateTime now) {
+        List<Task> matched = openTasks.stream().filter(openViewCondition(view, now.toLocalDate())).toList();
+        return builderFor(matched, now).buildOpen(matched);
+    }
+
+    /** ビューの判定（api-design 3.2）。親・サブタスクを問わずタスク1件ごとに判定する */
+    private static Predicate<Task> openViewCondition(TaskView view, LocalDate today) {
+        return switch (view) {
+            case TODAY -> t -> t.getDueDate() != null && !t.getDueDate().isAfter(today);
+            case UPCOMING -> t -> t.getDueDate() != null && t.getDueDate().isAfter(today);
+            case NO_DUE -> t -> t.getDueDate() == null;
+            case DONE -> throw new IllegalArgumentException("DONE is not an open view");
+        };
+    }
+
+    private TaskListResponse listDone(int offset, int limit, LocalDateTime now) {
+        if (offset < 0 || limit < 1 || limit > DONE_PAGE_MAX) {
+            throw ApiException.validation("limit", "offset/limit の値が不正です");
+        }
+        // ページングは「行（親単位）」で行う。完了日時の新しい順にまとめてから切り出す
+        Map<Long, List<Task>> groups = TaskListBuilder
+                .group(taskRepository.findByStatusOrderByCompletedAtDescIdDesc(TaskStatus.DONE));
+        List<Task> matched = groups.values().stream()
+                .skip(offset)
+                .limit(limit)
+                .flatMap(List::stream)
+                .toList();
+        boolean hasMore = groups.size() > offset + limit;
+        return new TaskListResponse(builderFor(matched, now).buildDone(matched), hasMore);
+    }
+
+    /** 行の組み立てに必要な親とサブタスクをまとめて取得する（N+1 を避ける） */
+    private TaskListBuilder builderFor(Collection<Task> matched, LocalDateTime now) {
+        Set<Long> rootIds = matched.stream().map(Task::rootId).collect(Collectors.toSet());
+        Map<Long, Task> parents = taskRepository.findAllById(rootIds).stream()
+                .collect(Collectors.toMap(Task::getId, Function.identity()));
+        Map<Long, List<Task>> subtasks = taskRepository.findByParentIdInOrderByIdAsc(rootIds).stream()
+                .collect(Collectors.groupingBy(Task::getParentId));
+        return new TaskListBuilder(parents, subtasks, now, clock.getZone());
+    }
+
+    // ---- 詳細 ---------------------------------------------------------------
 
     public TaskResponse get(Long id) {
         Task task = findTask(id);
-        return TaskResponse.of(task, LocalDateTime.now(clock), clock.getZone()).withDetail(null, List.of());
+        LocalDateTime now = LocalDateTime.now(clock);
+        if (task.isSubtask()) {
+            Task parent = findTask(task.getParentId());
+            return toResponse(task, now).withDetail(new TaskResponse.ParentSummary(parent.getId(), parent.getTitle()),
+                    null);
+        }
+        List<TaskResponse> subtasks = taskRepository.findByParentIdOrderByIdAsc(id).stream()
+                .map(t -> toResponse(t, now))
+                .toList();
+        return toResponse(task, now).withDetail(null, subtasks);
     }
+
+    // ---- 作成・更新・削除 ------------------------------------------------------
 
     @Transactional
     public TaskResponse create(TaskCreateRequest request) {
         validateDue(request.dueDate(), request.dueTime());
+        Instant now = Instant.now(clock);
+        Task parent = request.parentId() == null ? null : findParentForNewSubtask(request.parentId());
+
         Task task = Task.create(
                 request.title().strip(),
                 blankToNull(request.memo()),
                 request.dueDate(),
                 request.dueTime(),
                 request.priority() == null ? Priority.MEDIUM : request.priority(),
-                Instant.now(clock));
+                request.parentId(),
+                now);
         taskRepository.save(task);
-        return TaskResponse.of(task, LocalDateTime.now(clock), clock.getZone());
+
+        // 完了済みの親に未完了のサブタスクが加わったら、親を進行中に戻す
+        if (parent != null && parent.isDone()) {
+            parent.changeStatus(TaskStatus.IN_PROGRESS, now);
+            parent.touch(now);
+        }
+        return toResponse(task, LocalDateTime.now(clock));
+    }
+
+    private Task findParentForNewSubtask(Long parentId) {
+        Task parent = taskRepository.findById(parentId)
+                .orElseThrow(() -> ApiException.validation("parentId", "親タスクが見つかりません"));
+        if (parent.isSubtask()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "NESTED_SUBTASK", "サブタスクの下にサブタスクは作れません");
+        }
+        return parent;
     }
 
     @Transactional
@@ -129,29 +160,73 @@ public class TaskService {
         validateDue(request.dueDate(), request.dueTime());
         Task task = findTask(id);
         Instant now = Instant.now(clock);
+        // 一括完了の指定はできないので、未完了のサブタスクが残る親を完了にすると 409 になる
+        applyStatus(task, request.status(), false, now, new ArrayList<>());
         task.setTitle(request.title().strip());
         task.setMemo(blankToNull(request.memo()));
         task.setDue(request.dueDate(), request.dueTime());
         task.setPriority(request.priority());
-        task.changeStatus(request.status(), now);
         task.touch(now);
-        return TaskResponse.of(task, LocalDateTime.now(clock), clock.getZone());
+        return toResponse(task, LocalDateTime.now(clock));
     }
+
+    @Transactional
+    public void delete(Long id) {
+        // サブタスクは DB の ON DELETE CASCADE で一緒に削除される
+        taskRepository.delete(findTask(id));
+    }
+
+    // ---- ステータス -----------------------------------------------------------
 
     @Transactional
     public StatusChangeResponse changeStatus(Long id, StatusChangeRequest request) {
         Task task = findTask(id);
-        TaskStatus previous = task.getStatus();
-        if (previous == request.status()) {
-            return new StatusChangeResponse(List.of());
-        }
-        Instant now = Instant.now(clock);
-        task.changeStatus(request.status(), now);
-        task.touch(now);
-        return new StatusChangeResponse(
-                List.of(new StatusChangeResponse.Changed(task.getId(), previous, task.getStatus())));
+        List<StatusChangeResponse.Changed> changed = new ArrayList<>();
+        applyStatus(task, request.status(), Boolean.TRUE.equals(request.completeSubtasks()), Instant.now(clock),
+                changed);
+        return new StatusChangeResponse(changed);
     }
 
+    /**
+     * ステータスを変更し、親子の連動を行う（api-design 3.7）。
+     * <ul>
+     * <li>親を完了にするとき、未完了のサブタスクがあれば 409。completeSubtasks なら一緒に完了にする</li>
+     * <li>完了済みの親の下でサブタスクを未完了に戻したら、親を進行中に戻す</li>
+     * </ul>
+     * 状態が変わったタスクを changed に追加する。
+     */
+    private void applyStatus(Task task, TaskStatus newStatus, boolean completeSubtasks, Instant now,
+            List<StatusChangeResponse.Changed> changed) {
+        if (task.getStatus() == newStatus) {
+            return;
+        }
+        if (!task.isSubtask() && newStatus == TaskStatus.DONE) {
+            List<Task> incomplete = taskRepository.findByParentIdOrderByIdAsc(task.getId()).stream()
+                    .filter(t -> !t.isDone())
+                    .toList();
+            if (!incomplete.isEmpty() && !completeSubtasks) {
+                throw ApiException.subtasksIncomplete(incomplete.size());
+            }
+            incomplete.forEach(sub -> setStatus(sub, TaskStatus.DONE, now, changed));
+        }
+        setStatus(task, newStatus, now, changed);
+
+        if (task.isSubtask() && newStatus != TaskStatus.DONE) {
+            Task parent = findTask(task.getParentId());
+            if (parent.isDone()) {
+                setStatus(parent, TaskStatus.IN_PROGRESS, now, changed);
+            }
+        }
+    }
+
+    private static void setStatus(Task task, TaskStatus status, Instant now,
+            List<StatusChangeResponse.Changed> changed) {
+        changed.add(new StatusChangeResponse.Changed(task.getId(), task.getStatus(), status));
+        task.changeStatus(status, now);
+        task.touch(now);
+    }
+
+    /** 「元に戻す」用。連動は行わず、指定どおりに設定する（api-design 3.8） */
     @Transactional
     public void restoreStatuses(StatusRestoreRequest request) {
         List<Long> ids = request.changes().stream().map(StatusRestoreRequest.Change::id).distinct().toList();
@@ -168,13 +243,14 @@ public class TaskService {
         }
     }
 
-    @Transactional
-    public void delete(Long id) {
-        taskRepository.delete(findTask(id));
-    }
+    // ---- 共通 ---------------------------------------------------------------
 
     private Task findTask(Long id) {
         return taskRepository.findById(id).orElseThrow(() -> ApiException.notFound("タスクが見つかりません"));
+    }
+
+    private TaskResponse toResponse(Task task, LocalDateTime now) {
+        return TaskResponse.of(task, now, clock.getZone());
     }
 
     private static void validateDue(LocalDate dueDate, LocalTime dueTime) {
@@ -185,20 +261,5 @@ public class TaskService {
 
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value;
-    }
-
-    /** offset 指定でページングするための PageRequest（Spring Data はページ番号指定のため） */
-    private static final class OffsetPageRequest extends PageRequest {
-        private final long offset;
-
-        OffsetPageRequest(int offset, int limit) {
-            super(0, limit, Sort.unsorted());
-            this.offset = offset;
-        }
-
-        @Override
-        public long getOffset() {
-            return offset;
-        }
     }
 }

@@ -1,6 +1,6 @@
 import type { TaskListItem } from '../api/types.ts'
 import type { ViewKey } from '../views.ts'
-import { addDays, diffDays, formatDate, toDateKey } from './date.ts'
+import { addDays, diffDays, formatDate } from './date.ts'
 
 export type TaskGroup = {
   key: string
@@ -49,7 +49,8 @@ export function groupItems(view: ViewKey, items: TaskListItem[], today: string):
     case 'no-due':
       return items.length > 0 ? [{ key: 'all', label: null, emphasized: false, date: null, items }] : []
     case 'done':
-      return groupBy(items, (i) => (i.task.completedAt ? toDateKey(new Date(i.task.completedAt)) : '')).map(
+      // 完了済みビューの viewDate は、その行で最新の完了日（親がコンテキスト表示のときはサブタスクの完了日）
+      return groupBy(items, (i) => i.viewDate ?? '').map(
         ([date, groupItems]) => ({
           key: date,
           label: formatDate(date),

@@ -32,3 +32,18 @@
   color: var(--color-danger);
   font-size: 13px;
 }
+
+.compact {
+  margin: 4px 0 0;
+  padding: 0 8px;
+  border-color: transparent;
+}
+
+.compact:hover {
+  border-color: var(--color-border);
+}
+
+.compact .input {
+  padding: 6px 0;
+  font-size: 13.5px;
+}

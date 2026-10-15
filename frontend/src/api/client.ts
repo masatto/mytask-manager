@@ -5,12 +5,21 @@ export class ApiRequestError extends Error {
   readonly status: number
   readonly code: string
   readonly fieldErrors: FieldError[]
+  /** SUBTASKS_INCOMPLETE のときの未完了サブタスク数 */
+  readonly incompleteCount: number | undefined
 
-  constructor(status: number, code: string, message: string, fieldErrors: FieldError[] = []) {
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    fieldErrors: FieldError[] = [],
+    incompleteCount?: number,
+  ) {
     super(message)
     this.status = status
     this.code = code
     this.fieldErrors = fieldErrors
+    this.incompleteCount = incompleteCount
   }
 }
 
@@ -26,6 +35,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
       body?.code ?? 'INTERNAL_ERROR',
       body?.message ?? '通信に失敗しました',
       body?.fieldErrors ?? [],
+      body?.incompleteCount,
     )
   }
   if (response.status === 204) {

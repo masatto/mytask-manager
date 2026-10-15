@@ -45,8 +45,13 @@ export function updateTask(id: number, input: TaskUpdateInput): Promise<Task> {
   return apiFetch(`/tasks/${id}`, { method: 'PUT', body: JSON.stringify(input) })
 }
 
-export function changeTaskStatus(id: number, status: TaskStatus): Promise<{ changed: StatusChange[] }> {
-  return apiFetch(`/tasks/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) })
+export function changeTaskStatus(
+  id: number,
+  status: TaskStatus,
+  completeSubtasks = false,
+): Promise<{ changed: StatusChange[] }> {
+  const body = completeSubtasks ? { status, completeSubtasks } : { status }
+  return apiFetch(`/tasks/${id}/status`, { method: 'PATCH', body: JSON.stringify(body) })
 }
 
 export function restoreTaskStatuses(changes: { id: number; status: TaskStatus }[]): Promise<void> {

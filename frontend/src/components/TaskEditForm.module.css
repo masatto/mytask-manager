@@ -208,3 +208,101 @@
   font-size: 12px;
   text-align: right;
 }
+
+.parentLink {
+  align-self: flex-start;
+  max-width: 100%;
+  margin: -4px 0 8px;
+  padding: 2px 6px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--color-accent);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.parentLink:hover {
+  background: var(--color-accent-soft);
+}
+
+.subtasks {
+  margin-top: 24px;
+}
+
+.subtasksHeading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 6px;
+  color: var(--color-text-sub);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.subtasksCount {
+  font-variant-numeric: tabular-nums;
+}
+
+.subtaskList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.subtaskItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 8px;
+  border-radius: 8px;
+}
+
+.subtaskItem:hover {
+  background: var(--color-hover);
+}
+
+.subtaskCheckbox {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
+.subtaskTitle {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 0;
+  border: none;
+  background: none;
+  color: var(--color-text);
+  font-size: 13.5px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.subtaskDone {
+  color: var(--color-text-sub);
+  text-decoration: line-through;
+}
+
+.subtaskDue {
+  flex: none;
+  color: var(--color-text-sub);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.overdue {
+  color: var(--color-danger);
+  font-weight: 600;
+}

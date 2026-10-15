@@ -21,7 +21,8 @@ export type Task = {
 
 export type TaskDetail = Task & {
   parent?: { id: number; title: string }
-  subtasks: Task[]
+  /** 親のときだけ値を持つ */
+  subtasks?: Task[]
 }
 
 export type TaskListItem = {
@@ -58,6 +59,7 @@ export type TaskCreateInput = {
   dueDate?: string | null
   dueTime?: string | null
   priority?: Priority
+  parentId?: number
 }
 
 export type TaskUpdateInput = {
