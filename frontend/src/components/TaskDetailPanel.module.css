@@ -1,0 +1,41 @@
+.panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  width: 420px;
+  overflow-y: auto;
+  border-left: 1px solid var(--color-border);
+  background: var(--color-bg);
+  box-shadow: -8px 0 24px rgb(0 0 0 / 6%);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px 0;
+}
+
+.close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--color-text-sub);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.close:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
+.message {
+  padding: 24px;
+  color: var(--color-text-sub);
+}

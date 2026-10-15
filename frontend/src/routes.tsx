@@ -12,7 +12,8 @@ export const routes: RouteObject[] = [
       { path: '/', element: <Navigate to="/today" replace /> },
       ...VIEWS.map((view) => ({
         path: view.path,
-        element: <TaskListPage view={view.key} />,
+        // ビューごとに別インスタンスにして、入力中の内容などを持ち越さない
+        element: <TaskListPage key={view.key} view={view.key} />,
       })),
       { path: '/rules', element: <RulesPage /> },
       { path: '/settings', element: <SettingsPage /> },

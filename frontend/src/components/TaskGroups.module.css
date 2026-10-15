@@ -1,0 +1,31 @@
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.heading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 4px;
+  padding: 0 12px;
+  color: var(--color-text-sub);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.emphasized {
+  color: var(--color-text);
+}
+
+.count {
+  color: var(--color-text-sub);
+  font-weight: 400;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

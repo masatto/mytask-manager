@@ -1,0 +1,18 @@
+.mark {
+  flex: none;
+  width: 14px;
+  font-size: 12px;
+  text-align: center;
+}
+
+.high {
+  color: var(--color-priority-high);
+}
+
+.medium {
+  color: var(--color-priority-medium);
+}
+
+.low {
+  color: var(--color-priority-low);
+}

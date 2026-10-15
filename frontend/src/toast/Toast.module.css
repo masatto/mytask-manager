@@ -1,0 +1,41 @@
+.region {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 12px 10px 16px;
+  border-radius: 10px;
+  background: #24292f;
+  color: #fff;
+  font-size: 14px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 20%);
+  animation: slide-in 0.15s ease-out;
+}
+
+.action {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #8cb4ff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.action:hover {
+  background: rgb(255 255 255 / 10%);
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}

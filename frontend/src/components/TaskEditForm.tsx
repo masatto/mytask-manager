@@ -1,0 +1,267 @@
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { z } from 'zod'
+import { ApiRequestError } from '../api/client.ts'
+import { PRIORITY_LABELS, STATUS_LABELS, type Priority, type TaskDetail, type TaskStatus } from '../api/types.ts'
+import { useDeleteTask, useToggleComplete, useUpdateTask } from '../hooks/useTasks.ts'
+import { formatDate, formatDateTime } from '../lib/date.ts'
+import { useToast } from '../toast/useToast.ts'
+import { ConfirmDialog } from './ConfirmDialog.tsx'
+import styles from './TaskEditForm.module.css'
+
+const PRIORITIES: Priority[] = ['HIGH', 'MEDIUM', 'LOW']
+const STATUSES: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE']
+
+const schema = z
+  .object({
+    title: z.string().trim().min(1, 'タイトルは必須です').max(200, 'タイトルは200文字以内で入力してください'),
+    memo: z.string().max(10000, 'メモは10000文字以内で入力してください'),
+    dueDate: z.string(),
+    // 日付が空のときは入力欄を無効にするので、値が来ないことがある
+    dueTime: z.string().optional(),
+    priority: z.enum(PRIORITIES),
+    status: z.enum(STATUSES),
+  })
+  .refine((v) => !v.dueTime || v.dueDate !== '', {
+    path: ['dueTime'],
+    message: '時刻だけの期限は設定できません。日付も入力してください',
+  })
+
+type FormValues = z.input<typeof schema>
+type FormOutput = z.output<typeof schema>
+
+function toFormValues(task: TaskDetail): FormValues {
+  return {
+    title: task.title,
+    memo: task.memo ?? '',
+    dueDate: task.dueDate ?? '',
+    dueTime: task.dueTime ?? '',
+    priority: task.priority,
+    status: task.status,
+  }
+}
+
+type TaskEditFormProps = {
+  task: TaskDetail
+  onClose: () => void
+  onDeleted: () => void
+  onDirtyChange: (dirty: boolean) => void
+}
+
+export function TaskEditForm({ task, onClose, onDeleted, onDirtyChange }: TaskEditFormProps) {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    resetField,
+    setValue,
+    setError,
+    watch,
+    formState: { errors, isDirty },
+  } = useForm<FormValues, unknown, FormOutput>({
+    resolver: zodResolver(schema),
+    defaultValues: toFormValues(task),
+  })
+  const updateTask = useUpdateTask()
+  const deleteTask = useDeleteTask()
+  const { toggle, pending } = useToggleComplete()
+  const { showToast } = useToast()
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+
+  useEffect(() => {
+    onDirtyChange(isDirty)
+  }, [isDirty, onDirtyChange])
+  useEffect(() => () => onDirtyChange(false), [onDirtyChange])
+
+  // 一覧のチェックボックスなどでサーバー側の値が変わったら、フォームに反映する
+  useEffect(() => {
+    if (isDirty) {
+      resetField('status', { defaultValue: task.status })
+    } else {
+      reset(toFormValues(task))
+    }
+    // task が更新されたときだけ同期する（編集中の値で上書きしないため isDirty は依存に入れない）
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task])
+
+  const dueDate = watch('dueDate')
+
+  const onSubmit = (values: FormOutput) => {
+    updateTask.mutate(
+      {
+        id: task.id,
+        input: {
+          title: values.title,
+          memo: values.memo === '' ? null : values.memo,
+          dueDate: values.dueDate || null,
+          dueTime: values.dueDate && values.dueTime ? values.dueTime : null,
+          priority: values.priority,
+          status: values.status,
+        },
+      },
+      {
+        onSuccess: (updated) => {
+          reset(toFormValues({ ...task, ...updated }))
+          showToast({ message: '保存しました' })
+        },
+        onError: (error) => {
+          if (error instanceof ApiRequestError && error.fieldErrors.length > 0) {
+            for (const fe of error.fieldErrors) {
+              setError(fe.field as keyof FormValues, { message: fe.message })
+            }
+          } else {
+            showToast({ message: '保存できませんでした' })
+          }
+        },
+      },
+    )
+  }
+
+  const handleDelete = () => {
+    deleteTask.mutate(task.id, {
+      onSuccess: () => {
+        onDirtyChange(false)
+        onDeleted()
+        showToast({ message: '削除しました' })
+      },
+      onError: () => showToast({ message: '削除できませんでした' }),
+    })
+    setConfirmingDelete(false)
+  }
+
+  const checked = pending?.task.id === task.id ? pending.status === 'DONE' : task.status === 'DONE'
+
+  return (
+    <form className={styles.form} onSubmit={handleSubmit(onSubmit)} noValidate>
+      <div className={styles.toolbar}>
+        <button type="button" className={styles.iconButton} onClick={onClose} aria-label="閉じる">
+          ×
+        </button>
+        <button type="button" className={styles.deleteButton} onClick={() => setConfirmingDelete(true)}>
+          削除
+        </button>
+      </div>
+
+      <div className={styles.titleRow}>
+        <input
+          type="checkbox"
+          className={styles.checkbox}
+          checked={checked}
+          onChange={(e) => toggle(task, e.target.checked)}
+          aria-label={`「${task.title}」を完了にする`}
+        />
+        <input
+          className={styles.titleInput}
+          {...register('title')}
+          aria-label="タイトル"
+          aria-invalid={errors.title ? true : undefined}
+        />
+      </div>
+      {errors.title && <p className={styles.fieldError}>{errors.title.message}</p>}
+
+      <dl className={styles.fields}>
+        <dt>
+          <label htmlFor="task-status">ステータス</label>
+        </dt>
+        <dd>
+          <select id="task-status" className={styles.select} {...register('status')}>
+            {STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {STATUS_LABELS[s]}
+              </option>
+            ))}
+          </select>
+        </dd>
+
+        <dt>優先度</dt>
+        <dd>
+          <div className={styles.radioGroup} role="radiogroup" aria-label="優先度">
+            {PRIORITIES.map((p) => (
+              <label key={p} className={styles.radio}>
+                <input type="radio" value={p} {...register('priority')} />
+                {PRIORITY_LABELS[p]}
+              </label>
+            ))}
+          </div>
+        </dd>
+
+        <dt>
+          <label htmlFor="task-due-date">期限</label>
+        </dt>
+        <dd>
+          <div className={styles.dueRow}>
+            <input
+              id="task-due-date"
+              type="date"
+              className={styles.input}
+              {...register('dueDate', {
+                onChange: (e) => {
+                  if (!e.target.value) {
+                    setValue('dueTime', '', { shouldDirty: true })
+                  }
+                },
+              })}
+            />
+            <input
+              type="time"
+              className={styles.input}
+              aria-label="期限時刻"
+              disabled={!dueDate}
+              {...register('dueTime')}
+            />
+            <button
+              type="button"
+              className={styles.textButton}
+              onClick={() => {
+                setValue('dueDate', '', { shouldDirty: true })
+                setValue('dueTime', '', { shouldDirty: true })
+              }}
+            >
+              クリア
+            </button>
+          </div>
+          {errors.dueTime && <p className={styles.fieldError}>{errors.dueTime.message}</p>}
+        </dd>
+
+        {task.recurrence && (
+          <>
+            <dt>繰り返し</dt>
+            <dd className={styles.readonly}>
+              {task.recurrence.ruleTitle ?? 'ルールから生成'}（{formatDate(task.recurrence.occurrenceDate)}分）
+            </dd>
+          </>
+        )}
+      </dl>
+
+      <label className={styles.memoLabel} htmlFor="task-memo">
+        メモ
+      </label>
+      <textarea id="task-memo" className={styles.memo} rows={6} {...register('memo')} />
+      {errors.memo && <p className={styles.fieldError}>{errors.memo.message}</p>}
+
+      <div className={styles.actions}>
+        <button type="button" className={styles.secondary} onClick={onClose}>
+          キャンセル
+        </button>
+        <button type="submit" className={styles.primary} disabled={!isDirty || updateTask.isPending}>
+          {updateTask.isPending ? '保存中…' : '保存'}
+        </button>
+      </div>
+
+      <p className={styles.meta}>
+        作成 {formatDateTime(task.createdAt)} ・ 更新 {formatDateTime(task.updatedAt)}
+      </p>
+
+      {confirmingDelete && (
+        <ConfirmDialog
+          message="このタスクを削除しますか？"
+          confirmLabel="削除"
+          danger
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmingDelete(false)}
+        />
+      )}
+    </form>
+  )
+}
