@@ -34,4 +34,6 @@ mytask:
   data-dir: ${user.home}/.mytask-manager/data
   # 自動バックアップ（毎日1回のJSON。直近14日分を残す）の保存先
   backup-dir: ${user.home}/.mytask-manager/backups
+  # 画面から変える設定（自動バックアップのコピー先など）の保存先
+  settings-file: ${mytask.data-dir}/settings.json
   zone: Asia/Tokyo

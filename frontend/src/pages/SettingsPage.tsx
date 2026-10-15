@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState, type ChangeEvent } from 'react'
 import { ApiRequestError } from '../api/client.ts'
 import {
@@ -6,8 +6,11 @@ import {
   fetchAutoBackupStatus,
   importBackup,
   restoreAutoBackup,
+  runBackupNow,
+  setBackupMirror,
   type ImportSummary,
 } from '../api/backup.ts'
+import { fetchSystemInfo } from '../api/system.ts'
 import { ConfirmDialog } from '../components/ConfirmDialog.tsx'
 import { PageTitle } from '../components/PageTitle.tsx'
 import { formatDateTime } from '../lib/date.ts'
@@ -176,6 +179,8 @@ export function SettingsPage() {
 
       <AutoBackupSection onRestore={handleRestore} disabled={importing} />
 
+      <AboutSection />
+
       {pending && (
         <ConfirmDialog
           message="現在のデータはすべて置き換えられます。"
@@ -194,6 +199,15 @@ export function SettingsPage() {
 function AutoBackupSection({ onRestore, disabled }: { onRestore: (name: string) => void; disabled: boolean }) {
   const { data, isError } = useQuery({ queryKey: ['backup', 'auto'], queryFn: fetchAutoBackupStatus })
   const { showToast } = useToast()
+  const queryClient = useQueryClient()
+  const runNow = useMutation({
+    mutationFn: runBackupNow,
+    onSuccess: (status) => {
+      queryClient.setQueryData(['backup', 'auto'], status)
+      showToast({ message: status.mirrorError ? 'バックアップしました（コピー先には写せませんでした）' : 'バックアップしました' })
+    },
+    onError: () => showToast({ message: 'バックアップできませんでした' }),
+  })
 
   const copyPath = async (path: string) => {
     try {
@@ -225,6 +239,7 @@ function AutoBackupSection({ onRestore, disabled }: { onRestore: (name: string) 
               パスをコピー
             </button>
           </div>
+          <MirrorSetting current={data.mirrorDirectory} error={data.mirrorError} />
           {data.files.length === 0 ? (
             <p className={styles.meta}>まだ保存されていません</p>
           ) : (
@@ -249,7 +264,111 @@ function AutoBackupSection({ onRestore, disabled }: { onRestore: (name: string) 
               {data.files.length > 5 && <li className={styles.meta}>ほか{data.files.length - 5}件</li>}
             </ul>
           )}
+          <div className={styles.row}>
+            <button
+              type="button"
+              className={styles.smallButton}
+              onClick={() => runNow.mutate()}
+              disabled={runNow.isPending}
+            >
+              {runNow.isPending ? '保存中…' : '今すぐバックアップ'}
+            </button>
+            <span className={styles.meta}>今日の分を今の内容で作り直します（コピー先にも写します）</span>
+          </div>
         </>
+      )}
+    </section>
+  )
+}
+
+/**
+ * 自動バックアップのコピー先。OneDrive などの同期フォルダーを指定すると、この PC のディスクが壊れても
+ * バックアップが残る。指定するとすぐに今あるバックアップを写す。
+ */
+function MirrorSetting({ current, error }: { current: string | null; error: string | null }) {
+  const queryClient = useQueryClient()
+  const { showToast } = useToast()
+  const [value, setValue] = useState(current ?? '')
+  const [fieldError, setFieldError] = useState<string | null>(null)
+
+  const save = useMutation({
+    mutationFn: (dir: string | null) => setBackupMirror(dir),
+    onSuccess: (status) => {
+      queryClient.setQueryData(['backup', 'auto'], status)
+      setValue(status.mirrorDirectory ?? '')
+      setFieldError(null)
+      showToast({ message: status.mirrorDirectory ? 'コピー先を設定しました' : 'コピー先を解除しました' })
+    },
+    onError: (e) =>
+      setFieldError(e instanceof ApiRequestError && e.fieldErrors[0] ? e.fieldErrors[0].message : '設定できませんでした'),
+  })
+
+  return (
+    <div className={styles.mirror}>
+      <label className={styles.mirrorLabel} htmlFor="backup-mirror">
+        コピー先（任意）：OneDrive などの同期フォルダーを指定すると、この PC が壊れてもバックアップが残ります
+      </label>
+      <div className={styles.row}>
+        <input
+          id="backup-mirror"
+          className={styles.textInput}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="例：C:\Users\あなた\OneDrive\Orbit"
+          spellCheck={false}
+        />
+        <button
+          type="button"
+          className={styles.smallButton}
+          onClick={() => save.mutate(value.trim() || null)}
+          disabled={save.isPending || value.trim() === (current ?? '')}
+        >
+          保存
+        </button>
+        {current && (
+          <button type="button" className={styles.smallButton} onClick={() => save.mutate(null)} disabled={save.isPending}>
+            解除
+          </button>
+        )}
+      </div>
+      {fieldError && <p className={styles.error}>{fieldError}</p>}
+      {!fieldError && error && (
+        <p className={styles.error} role="alert">
+          コピー先に写せませんでした：{error}
+        </p>
+      )}
+    </div>
+  )
+}
+
+/** このアプリについて：古いアプリが動いたままになっていないかを、バージョンとビルド日時で確かめられるようにする */
+function AboutSection() {
+  const { data, isError } = useQuery({ queryKey: ['system'], queryFn: fetchSystemInfo, refetchInterval: false })
+
+  return (
+    <section className={styles.card} aria-labelledby="about-heading">
+      <h2 id="about-heading" className={styles.heading}>
+        このアプリについて
+      </h2>
+      {isError ? (
+        <p className={styles.description}>情報を取得できませんでした</p>
+      ) : !data ? (
+        <p className={styles.description}>読み込み中…</p>
+      ) : (
+        <dl className={styles.about}>
+          <dt>バージョン</dt>
+          <dd>Orbit {data.version}</dd>
+          <dt>ビルド日時</dt>
+          <dd>{data.buildTime ? formatDateTime(data.buildTime) : '—'}</dd>
+          <dt>データの保存先</dt>
+          <dd>
+            <code className={styles.path}>{data.dataDirectory}</code>
+          </dd>
+          <dt>バックアップの保存先</dt>
+          <dd>
+            <code className={styles.path}>{data.backupDirectory}</code>
+          </dd>
+        </dl>
       )}
     </section>
   )
