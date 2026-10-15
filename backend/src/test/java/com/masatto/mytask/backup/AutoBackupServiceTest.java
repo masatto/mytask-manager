@@ -130,13 +130,13 @@ class AutoBackupServiceTest {
                 {"title":"バックアップ後に追加"}
                 """));
 
-        mockMvc.perform(post("/api/backup/auto/{name}/import", "orbit-auto-20261014.json").param("dryRun", "true"))
+        mockMvc.perform(post("/api/backup/auto/{name}/import", "orbit-auto-20261014.json").param("dryRun", "true").contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.current.tasks").value(1))
                 .andExpect(jsonPath("$.incoming.tasks").value(0));
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM tasks", Integer.class)).isEqualTo(1);
 
-        mockMvc.perform(post("/api/backup/auto/{name}/import", "orbit-auto-20261014.json"))
+        mockMvc.perform(post("/api/backup/auto/{name}/import", "orbit-auto-20261014.json").contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNoContent());
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM tasks", Integer.class)).isZero();
     }
@@ -146,7 +146,7 @@ class AutoBackupServiceTest {
         Files.createDirectories(dir());
         Files.writeString(dir().resolve("other.json"), "{}");
         for (String name : new String[] { "other.json", "..%2Fdata%2Fmytask.mv.db", "orbit-auto-20990101.json" }) {
-            mockMvc.perform(post("/api/backup/auto/{name}/import", name).param("dryRun", "true"))
+            mockMvc.perform(post("/api/backup/auto/{name}/import", name).param("dryRun", "true").contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isNotFound());
         }
     }
