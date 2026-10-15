@@ -15,3 +15,7 @@
     padding: 24px 20px;
   }
 }
+
+.page {
+  min-width: 0;
+}

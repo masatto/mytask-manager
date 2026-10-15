@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.masatto</groupId>
 	<artifactId>backend</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0.0</version>
 	<name>backend</name>
 	<description/>
 	<url/>
@@ -90,6 +90,18 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<executions>
+					<!-- バージョンとビルド日時を埋め込む（設定画面の「このアプリについて」に表示する） -->
+					<execution>
+						<goals>
+							<goal>build-info</goal>
+						</goals>
+						<configuration>
+							<!-- 既定では再現可能ビルド用の固定日時（1980年）になるので、実際のビルド日時を入れる -->
+							<time>${maven.build.timestamp}</time>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>

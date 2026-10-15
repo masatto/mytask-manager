@@ -27,6 +27,20 @@ export type AutoBackupStatus = {
   directory: string
   keep: number
   files: { name: string; size: number; createdAt: string | null }[]
+  /** コピー先（OneDrive などの同期フォルダー）。未設定なら null */
+  mirrorDirectory: string | null
+  /** 直近のコピーの失敗理由。成功していれば null */
+  mirrorError: string | null
+}
+
+/** 自動バックアップのコピー先を設定する（null で解除） */
+export function setBackupMirror(mirrorDirectory: string | null): Promise<AutoBackupStatus> {
+  return apiFetch('/backup/auto/mirror', { method: 'PUT', body: JSON.stringify({ mirrorDirectory }) })
+}
+
+/** 今すぐ自動バックアップを保存する（今日の分があっても作り直す） */
+export function runBackupNow(): Promise<AutoBackupStatus> {
+  return apiFetch('/backup/auto/run', { method: 'POST' })
 }
 
 /** 自動バックアップの保存先と保存済みファイル（新しい順） */

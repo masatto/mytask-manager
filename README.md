@@ -46,9 +46,8 @@ Maven のインストールは不要（同梱の `mvnw` を使う）。
 
 ### ログイン時に自動で起動する（任意）
 
-1. `Win + R` で `shell:startup` を開く
-2. `start.bat` のショートカットを作ってそのフォルダーに置く
-3. ショートカットのプロパティで、リンク先の末尾に ` --background` を付け（ブラウザを開かずに起動する）、「実行時の大きさ」を「最小化」にする
+- **登録**：`install-autostart.bat` をダブルクリックする。スタートアップフォルダーに「Orbit」のショートカット（`start.bat --background`、最小化）が作られ、次回のサインインから自動で起動する（ブラウザは開かない）
+- **解除**：`uninstall-autostart.bat` をダブルクリックする
 
 ### データの保存場所
 
@@ -66,6 +65,8 @@ Maven のインストールは不要（同梱の `mvnw` を使う）。
 ```
 %USERPROFILE%\.mytask-manager\backups\orbit-auto-YYYYMMDD.json
 ```
+
+**コピー先（おすすめ）**：設定画面の「コピー先」に OneDrive などの同期フォルダーを指定すると、自動バックアップをそこにも置く（そこでも直近14日分を残す）。この PC のディスクが壊れても、バックアップが残る。コピーに失敗したときは設定画面に理由が出る。「今すぐバックアップ」で、その場で保存し直せる。
 
 **手動のエクスポート／インポート**は、画面左の「設定」から行う。
 
@@ -100,6 +101,7 @@ mytask-manager/
 ├── start.bat / stop.bat   起動・終了（普段使い）
 ├── build.bat              普段使い用アプリ（app\orbit.jar）を作る
 ├── start-dev.bat          開発用の起動
+├── install-autostart.bat / uninstall-autostart.bat   サインイン時の自動起動の登録・解除
 ├── app/                   build.bat が作るアプリ（Git の管理外）
 ├── docs/                  要件定義・設計書
 ├── backend/               Spring Boot 4 / Java 21 / Spring Data JPA / H2 / Flyway

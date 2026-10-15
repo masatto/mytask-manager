@@ -3,6 +3,7 @@ package com.masatto.mytask.backup;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
@@ -51,16 +52,28 @@ class AutoBackupServiceTest {
         return Path.of(backupDir).toAbsolutePath().normalize();
     }
 
-    @BeforeEach
-    void cleanUp() throws IOException {
-        clock.set(TestClockConfig.NOW);
-        if (Files.isDirectory(dir())) {
-            try (Stream<Path> files = Files.list(dir())) {
+    /** コピー先のテスト用フォルダー（target/test-mirror） */
+    private static Path mirrorDir() {
+        return Path.of("target/test-mirror").toAbsolutePath().normalize();
+    }
+
+    private static void emptyDir(Path dir) throws IOException {
+        if (Files.isDirectory(dir)) {
+            try (Stream<Path> files = Files.list(dir)) {
                 for (Path f : files.toList()) {
                     Files.delete(f);
                 }
             }
         }
+    }
+
+    @BeforeEach
+    void cleanUp() throws IOException {
+        clock.set(TestClockConfig.NOW);
+        autoBackup.setMirrorDirectory(null);
+        emptyDir(dir());
+        emptyDir(mirrorDir());
+        Files.createDirectories(mirrorDir());
     }
 
     private long fileCount() throws IOException {
@@ -149,6 +162,69 @@ class AutoBackupServiceTest {
             mockMvc.perform(post("/api/backup/auto/{name}/import", name).param("dryRun", "true").contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isNotFound());
         }
+    }
+
+    @Test
+    void コピー先を設定すると今あるバックアップを写し_以後の保存も写す() throws Exception {
+        autoBackup.runIfNeeded();
+
+        mockMvc.perform(put("/api/backup/auto/mirror").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"mirrorDirectory\":" + jsonString(mirrorDir().toString()) + "}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mirrorDirectory").value(mirrorDir().toString()))
+                .andExpect(jsonPath("$.mirrorError").doesNotExist());
+        assertThat(mirrorDir().resolve("orbit-auto-20261014.json")).exists();
+
+        clock.set(TestClockConfig.NOW.plusDays(1));
+        autoBackup.runIfNeeded();
+        assertThat(mirrorDir().resolve("orbit-auto-20261015.json")).exists();
+    }
+
+    @Test
+    void コピー先でも直近14日分だけを残す() throws Exception {
+        autoBackup.setMirrorDirectory(mirrorDir().toString());
+        for (int day = 0; day < 16; day++) {
+            clock.set(TestClockConfig.NOW.plusDays(day));
+            autoBackup.runIfNeeded();
+        }
+        try (Stream<Path> files = Files.list(mirrorDir())) {
+            assertThat(files.count()).isEqualTo(AutoBackupService.KEEP);
+        }
+    }
+
+    @Test
+    void 存在しないフォルダーや相対パスはコピー先にできない() throws Exception {
+        for (String bad : new String[] { mirrorDir().resolve("no-such").toString(), "relative/dir", dir().toString() }) {
+            mockMvc.perform(put("/api/backup/auto/mirror").contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"mirrorDirectory\":" + jsonString(bad) + "}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.fieldErrors[0].field").value("mirrorDirectory"));
+        }
+    }
+
+    @Test
+    void コピー先が消えていても保存自体は成功し_理由を状態に出す() throws Exception {
+        autoBackup.setMirrorDirectory(mirrorDir().toString());
+        emptyDir(mirrorDir());
+        Files.delete(mirrorDir());
+
+        assertThat(autoBackup.runIfNeeded()).isPresent();
+        assertThat(autoBackup.status().mirrorError()).contains("コピー先のフォルダーが見つかりません");
+    }
+
+    @Test
+    void 今すぐバックアップは今日の分を作り直す() throws Exception {
+        autoBackup.runIfNeeded();
+        Files.writeString(dir().resolve("orbit-auto-20261014.json"), "{}");
+
+        mockMvc.perform(post("/api/backup/auto/run").contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.files[0].name").value("orbit-auto-20261014.json"));
+        assertThat(Files.readString(dir().resolve("orbit-auto-20261014.json"))).contains("mytask-manager-backup");
+    }
+
+    private static String jsonString(String value) {
+        return "\"" + value.replace("\\", "\\\\") + "\"";
     }
 
     @Test

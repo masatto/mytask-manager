@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -29,6 +30,21 @@ public class BackupController {
     @GetMapping("/auto")
     public AutoBackupService.Status autoBackupStatus() {
         return autoBackupService.status();
+    }
+
+    public record MirrorRequest(String mirrorDirectory) {
+    }
+
+    /** 自動バックアップのコピー先を設定する（null や空なら使わない）。設定するとすぐに今あるバックアップを写す（api-design 6.5） */
+    @PutMapping("/auto/mirror")
+    public AutoBackupService.Status setMirror(@RequestBody MirrorRequest request) {
+        return autoBackupService.setMirrorDirectory(request.mirrorDirectory());
+    }
+
+    /** 今すぐ自動バックアップを保存する（今日の分があっても作り直す。コピー先にも写す） */
+    @PostMapping("/auto/run")
+    public AutoBackupService.Status runNow() {
+        return autoBackupService.runNow();
     }
 
     /** 自動バックアップのファイルから復元する。dryRun=true なら検証と件数の確認だけ（api-design 6.4） */

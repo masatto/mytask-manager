@@ -1,4 +1,4 @@
-# mytask-manager API設計 v1.5
+# mytask-manager API設計 v1.6
 
 [requirements.md](requirements.md) v1.1 と [screen-design.md](screen-design.md) v1.0 に基づく。
 
@@ -379,6 +379,25 @@ TaskResponse に次の項目を加えて返す。
 - `name` は 6.3 の `files[].name`。中身を 6.2 と同じ方法で取り込む（`dryRun=true` なら検証と件数の確認だけ）
 - 自動バックアップのファイル名（`orbit-auto-YYYYMMDD.json` など）に合わない名前、保存先フォルダーの外を指す名前、存在しないファイルは 404 `NOT_FOUND`
 
+### 6.5 自動バックアップのコピー先と「今すぐバックアップ」
+
+| メソッド | パス | 内容 |
+|---|---|---|
+| PUT | `/backup/auto/mirror` | `{ "mirrorDirectory": "C:\\Users\\me\\OneDrive\\Orbit" }`（null・空で解除）。存在して書き込める絶対パスのフォルダーで、保存先とは別であること（違えば 400 `VALIDATION_ERROR`、field は `mirrorDirectory`）。設定するとすぐに今あるバックアップを写す。返すのは 6.3 の状態 |
+| POST | `/backup/auto/run` | 今日の自動バックアップを今の内容で作り直し、コピー先にも写す。返すのは 6.3 の状態 |
+
+- 6.3 の状態に `mirrorDirectory`（未設定なら null）と `mirrorError`（直近のコピーの失敗理由。成功なら null）を加える
+- コピー先にも、自動バックアップのファイル名に合うものだけを新しい順に14件残す。コピーに失敗しても、バックアップ自体（保存先への保存）は成功として扱う
+- 設定は DB の外（`mytask.settings-file`、初期値は `データの保存先\settings.json`）に置く。DB を復元しても設定が巻き戻らないようにするため
+
+### 6.6 GET `/system`（このアプリについて）
+
+```json
+{ "version": "1.0.0", "buildTime": "2026-10-15T16:53:16+09:00", "dataDirectory": "C:\\Users\\me\\.mytask-manager\\data", "backupDirectory": "C:\\Users\\me\\.mytask-manager\\backups" }
+```
+
+- `buildTime` は実際にビルドした日時（古いアプリが動いたままになっていないかの確認用）
+
 ## 7. 決定事項
 
 1. 完了済みの親の下でサブタスクを未完了に戻したら、親を「進行中」に戻す
@@ -396,3 +415,4 @@ TaskResponse に次の項目を加えて返す。
 | 2026-10-15 | 1.3 | 検索（3.10）と自動バックアップ（6.3）を追加 |
 | 2026-10-15 | 1.4 | 件数に `doneToday` を追加（3.3）。自動バックアップからの復元（6.4）を追加 |
 | 2026-10-15 | 1.5 | 接続の制限（別のサイトからの操作・DNS リバインディングの拒否）と 403・415 を追加 |
+| 2026-10-15 | 1.6 | 今日完了ビュー（`view=done-today`）、自動バックアップのコピー先と今すぐバックアップ（6.5）、`/system`（6.6）を追加 |
