@@ -2,6 +2,8 @@ package com.masatto.mytask.backup;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 import java.io.IOException;
@@ -16,6 +18,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.jayway.jsonpath.JsonPath;
@@ -36,6 +40,9 @@ class AutoBackupServiceTest {
 
     @Autowired
     MockMvc mockMvc;
+
+    @Autowired
+    JdbcTemplate jdbc;
 
     @Value("${mytask.backup-dir}")
     String backupDir;
@@ -113,6 +120,35 @@ class AutoBackupServiceTest {
         assertThat(fileCount()).isEqualTo(AutoBackupService.KEEP);
         assertThat(autoBackup.status().files().getFirst().name()).isEqualTo("orbit-auto-20261021.json");
         assertThat(autoBackup.status().files().getLast().name()).isEqualTo("mytask-manager-auto-20261005.json");
+    }
+
+    @Test
+    void 自動バックアップのファイルから復元できる() throws Exception {
+        jdbc.update("DELETE FROM tasks");
+        autoBackup.runIfNeeded(); // 空の状態を保存
+        mockMvc.perform(post("/api/tasks").contentType(MediaType.APPLICATION_JSON).content("""
+                {"title":"バックアップ後に追加"}
+                """));
+
+        mockMvc.perform(post("/api/backup/auto/{name}/import", "orbit-auto-20261014.json").param("dryRun", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.current.tasks").value(1))
+                .andExpect(jsonPath("$.incoming.tasks").value(0));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM tasks", Integer.class)).isEqualTo(1);
+
+        mockMvc.perform(post("/api/backup/auto/{name}/import", "orbit-auto-20261014.json"))
+                .andExpect(status().isNoContent());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM tasks", Integer.class)).isZero();
+    }
+
+    @Test
+    void 自動バックアップ以外のファイルは復元に使えない() throws Exception {
+        Files.createDirectories(dir());
+        Files.writeString(dir().resolve("other.json"), "{}");
+        for (String name : new String[] { "other.json", "..%2Fdata%2Fmytask.mv.db", "orbit-auto-20990101.json" }) {
+            mockMvc.perform(post("/api/backup/auto/{name}/import", name).param("dryRun", "true"))
+                    .andExpect(status().isNotFound());
+        }
     }
 
     @Test

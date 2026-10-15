@@ -45,6 +45,8 @@ export type TaskCounts = {
   overdue: number
   upcoming: number
   noDue: number
+  /** 今日完了にした親タスクの数 */
+  doneToday: number
 }
 
 export type StatusChange = {

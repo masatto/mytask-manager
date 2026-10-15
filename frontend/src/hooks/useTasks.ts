@@ -10,7 +10,7 @@ import {
   updateTask,
   DONE_PAGE_SIZE,
 } from '../api/tasks.ts'
-import type { TaskCreateInput, TaskUpdateInput } from '../api/types.ts'
+import type { TaskCreateInput, TaskDetail, TaskUpdateInput } from '../api/types.ts'
 import type { ViewKey } from '../views.ts'
 
 /** 未完了ビュー（今日・今後・期限なし）の一覧 */
@@ -66,6 +66,38 @@ export function useCreateTask() {
   return useMutation({
     mutationFn: (input: TaskCreateInput) => createTask(input),
     onSuccess: invalidate,
+  })
+}
+
+/**
+ * タスクを複製する。タイトルに「（コピー）」を付け、期限・優先度・メモとサブタスクも写す。
+ * ステータスは未着手から始め、繰り返しの関係は写さない。作ったタスクを返す。
+ */
+export function useDuplicateTask() {
+  const invalidate = useInvalidateTasks()
+  return useMutation({
+    mutationFn: async (task: TaskDetail) => {
+      const copy = await createTask({
+        title: `${task.title}（コピー）`.slice(0, 200),
+        memo: task.memo,
+        dueDate: task.dueDate,
+        dueTime: task.dueTime,
+        priority: task.priority,
+        ...(task.parentId !== null ? { parentId: task.parentId } : {}),
+      })
+      for (const sub of task.subtasks ?? []) {
+        await createTask({
+          title: sub.title,
+          memo: sub.memo,
+          dueDate: sub.dueDate,
+          dueTime: sub.dueTime,
+          priority: sub.priority,
+          parentId: copy.id,
+        })
+      }
+      return copy
+    },
+    onSettled: invalidate,
   })
 }
 

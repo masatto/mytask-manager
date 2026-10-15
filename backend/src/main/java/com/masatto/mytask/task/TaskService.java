@@ -64,7 +64,13 @@ public class TaskService {
                 today.size(),
                 (int) today.stream().filter(TaskListItem::viewOverdue).count(),
                 openItems(TaskView.UPCOMING, open, now).size(),
-                openItems(TaskView.NO_DUE, open, now).size());
+                openItems(TaskView.NO_DUE, open, now).size(),
+                (int) taskRepository.countDoneBetween(startOfDay(now.toLocalDate()),
+                        startOfDay(now.toLocalDate().plusDays(1))));
+    }
+
+    private Instant startOfDay(LocalDate date) {
+        return date.atStartOfDay(clock.getZone()).toInstant();
     }
 
     /** 未完了ビューの行。件数はこの行数と一致させる（api-design 3.3） */

@@ -14,7 +14,7 @@ import {
   type TaskUpdateInput,
 } from '../api/types.ts'
 import { isChecked, useToggleComplete } from '../hooks/useToggleComplete.tsx'
-import { useDeleteTask, useUpdateTask } from '../hooks/useTasks.ts'
+import { useDeleteTask, useDuplicateTask, useUpdateTask } from '../hooks/useTasks.ts'
 import { addDays, formatDate, formatDateTime, nextMonday, todayKey } from '../lib/date.ts'
 import { useToast } from '../toast/useToast.ts'
 import { ConfirmDialog } from './ConfirmDialog.tsx'
@@ -41,6 +41,12 @@ const schema = z
   })
 
 type FormValues = z.input<typeof schema>
+
+/** メモに書かれた URL（http/https）。重複を除いて最大5件。クリックで開けるよう、メモの下に並べる */
+const URL_PATTERN = /https?:\/\/[^\s<>"'）」』】]+/g
+function extractLinks(memo: string | undefined): string[] {
+  return [...new Set(memo?.match(URL_PATTERN) ?? [])].slice(0, 5)
+}
 type FormOutput = z.output<typeof schema>
 
 function toFormValues(task: TaskDetail): FormValues {
@@ -124,6 +130,18 @@ export function TaskEditForm({
   }, [task])
 
   const dueDate = watch('dueDate')
+  const memoLinks = extractLinks(watch('memo'))
+  const duplicateTask = useDuplicateTask()
+
+  const handleDuplicate = async () => {
+    try {
+      const copy = await duplicateTask.mutateAsync(task)
+      showToast({ message: '複製しました' })
+      onOpenTask(copy.id)
+    } catch {
+      showToast({ message: '複製できませんでした' })
+    }
+  }
 
   const save = (values: FormOutput) => {
     updateTask.mutate(
@@ -187,9 +205,19 @@ export function TaskEditForm({
         <button type="button" className={styles.iconButton} onClick={onClose} aria-label="閉じる" data-hotkey="close-panel">
           ×
         </button>
-        <button type="button" className={styles.deleteButton} onClick={() => setConfirmingDelete(true)}>
-          削除
-        </button>
+        <div className={styles.toolbarActions}>
+          <button
+            type="button"
+            className={styles.textButton}
+            onClick={handleDuplicate}
+            disabled={duplicateTask.isPending}
+          >
+            複製
+          </button>
+          <button type="button" className={styles.deleteButton} onClick={() => setConfirmingDelete(true)}>
+            削除
+          </button>
+        </div>
       </div>
 
       {task.parent && (
@@ -323,6 +351,17 @@ export function TaskEditForm({
       </label>
       <textarea id="task-memo" className={styles.memo} rows={5} {...register('memo')} />
       {errors.memo && <p className={styles.fieldError}>{errors.memo.message}</p>}
+      {memoLinks.length > 0 && (
+        <ul className={styles.memoLinks} aria-label="メモのリンク">
+          {memoLinks.map((url) => (
+            <li key={url}>
+              <a href={url} target="_blank" rel="noopener noreferrer" title={url}>
+                {url.replace(/^https?:\/\//, '')}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {/* サブタスクの下にはサブタスクを作れないので、親のときだけ出す（1階層の制約） */}
       {!task.parent && (
@@ -346,7 +385,7 @@ export function TaskEditForm({
               />
             ))}
           </ul>
-          <QuickAdd dueDate={null} parentId={task.id} placeholder="サブタスクを追加" compact />
+          <QuickAdd dueDate={null} parentId={task.id} placeholder="サブタスクを追加（例：明日 指摘1の修正）" compact />
         </section>
       )}
 

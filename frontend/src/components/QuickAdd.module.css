@@ -1,8 +1,15 @@
+.wrapper {
+  margin-bottom: 24px;
+}
+
+.compactWrapper {
+  margin: 4px 0 0;
+}
+
 .form {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 24px;
   padding: 0 12px;
   border: 1px solid var(--color-border);
   border-radius: 10px;
@@ -34,7 +41,6 @@
 }
 
 .compact {
-  margin: 4px 0 0;
   padding: 0 8px;
   border-color: transparent;
 }
@@ -46,4 +52,24 @@
 .compact .input {
   padding: 6px 0;
   font-size: 13.5px;
+}
+
+/* 読み取った期限・優先度のプレビュー */
+.preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 6px 0 0;
+  padding: 0 12px;
+  color: var(--color-accent);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.previewTitle {
+  color: var(--color-text-sub);
+}
+
+.previewWarn {
+  color: var(--color-danger);
 }

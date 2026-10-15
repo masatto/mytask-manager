@@ -70,4 +70,4 @@ export function listItem(task: Task): TaskListItem {
   }
 }
 
-export const EMPTY_COUNTS = { status: 200, body: { today: 0, overdue: 0, upcoming: 0, noDue: 0 } }
+export const EMPTY_COUNTS = { status: 200, body: { today: 0, overdue: 0, upcoming: 0, noDue: 0, doneToday: 0 } }

@@ -344,3 +344,28 @@
   border-color: var(--color-accent);
   color: var(--color-accent);
 }
+
+.toolbarActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.memoLinks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.memoLinks a {
+  display: block;
+  overflow: hidden;
+  color: var(--color-accent);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+

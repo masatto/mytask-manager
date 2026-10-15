@@ -21,8 +21,12 @@ export function TaskGroups({ groups, showCompletedTime, selectedId, onOpen }: Ta
   // 期限が今日以前の未完了タスクだけ「明日へ」を出す
   const postponeFor = (task: Task) =>
     task.status !== 'DONE' && task.dueDate !== null && task.dueDate <= today
-      ? () => reschedule(task, addDays(today, 1), '明日')
+      ? () => reschedule([task], addDays(today, 1), `「${task.title}」を明日に延期しました`)
       : undefined
+
+  /** 期限切れのグループにある、期限切れの未完了タスク（親・サブタスク） */
+  const overdueTasks = (group: TaskGroup) =>
+    group.items.flatMap(({ task, subtasks }) => [task, ...subtasks].filter((t) => t.overdue && t.status !== 'DONE'))
   // 初期状態はすべて開いた状態。閉じた親のIDだけを持つ
   const [collapsed, setCollapsed] = useState<ReadonlySet<number>>(new Set())
 
@@ -45,6 +49,18 @@ export function TaskGroups({ groups, showCompletedTime, selectedId, onOpen }: Ta
             <h2 className={group.emphasized ? `${styles.heading} ${styles.emphasized}` : styles.heading}>
               {group.label}
               <span className={styles.count}>{group.items.length}</span>
+              {group.key === 'overdue' && overdueTasks(group).length > 0 && (
+                <button
+                  type="button"
+                  className={styles.groupAction}
+                  onClick={() => {
+                    const tasks = overdueTasks(group)
+                    reschedule(tasks, today, `期限切れの${tasks.length}件を今日にしました`)
+                  }}
+                >
+                  すべて今日へ
+                </button>
+              )}
             </h2>
           )}
           <ul className={styles.list}>

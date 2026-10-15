@@ -1,4 +1,4 @@
-# mytask-manager API設計 v1.3
+# mytask-manager API設計 v1.4
 
 [requirements.md](requirements.md) v1.1 と [screen-design.md](screen-design.md) v1.0 に基づく。
 
@@ -142,11 +142,12 @@
 ### 3.3 GET `/tasks/counts`
 
 ```json
-{ "today": 5, "overdue": 2, "upcoming": 12, "noDue": 3 }
+{ "today": 5, "overdue": 2, "upcoming": 12, "noDue": 3, "doneToday": 4 }
 ```
 
 - 件数は、各ビューの `items` の件数と同じ
 - `overdue` は、今日ビューのうち `viewOverdue` が true の件数（サイドバーで赤く表示するかの判定に使う）
+- `doneToday` は、今日（0:00〜24:00）完了にした親タスクの数。期限に関係なく数える（Today の進み具合の表示に使う）
 
 ### 3.4 GET `/tasks/{id}`
 
@@ -361,6 +362,11 @@ TaskResponse に次の項目を加えて返す。
 - 自動バックアップのファイル名に合うものだけを数え、新しい順に14件を残して古いものを削除する（フォルダー内のほかのファイルには触れない）
 - 保存先は `mytask.backup-dir`（初期値 `%USERPROFILE%\.mytask-manager\backups`）
 
+### 6.4 POST `/backup/auto/{name}/import`（自動バックアップから復元）
+
+- `name` は 6.3 の `files[].name`。中身を 6.2 と同じ方法で取り込む（`dryRun=true` なら検証と件数の確認だけ）
+- 自動バックアップのファイル名（`orbit-auto-YYYYMMDD.json` など）に合わない名前、保存先フォルダーの外を指す名前、存在しないファイルは 404 `NOT_FOUND`
+
 ## 7. 決定事項
 
 1. 完了済みの親の下でサブタスクを未完了に戻したら、親を「進行中」に戻す
@@ -376,3 +382,4 @@ TaskResponse に次の項目を加えて返す。
 | 2026-10-15 | 1.1 | Phase 2 の実装に合わせて `viewDate` の定義を明確化。完了済みの親へのサブタスク追加時の動作を追記 |
 | 2026-10-15 | 1.2 | 期限のないサブタスクは親の期限でビューを判定。ルールの更新・再開時にも生成処理を実行 |
 | 2026-10-15 | 1.3 | 検索（3.10）と自動バックアップ（6.3）を追加 |
+| 2026-10-15 | 1.4 | 件数に `doneToday` を追加（3.3）。自動バックアップからの復元（6.4）を追加 |

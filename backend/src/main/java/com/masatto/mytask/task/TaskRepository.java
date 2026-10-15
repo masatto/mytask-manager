@@ -1,5 +1,6 @@
 package com.masatto.mytask.task;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
@@ -14,6 +15,13 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 
     /** 完了済みのタスク（親・サブタスクの両方）を完了日時の新しい順に */
     List<Task> findByStatusOrderByCompletedAtDescIdDesc(TaskStatus status);
+
+    /** 指定した期間に完了にした親タスクの数 */
+    @Query("""
+            SELECT COUNT(t) FROM Task t
+            WHERE t.parentId IS NULL AND t.completedAt >= :from AND t.completedAt < :to
+            """)
+    long countDoneBetween(Instant from, Instant to);
 
     /** 指定した親のサブタスクを作成順に */
     List<Task> findByParentIdInOrderByIdAsc(Collection<Long> parentIds);

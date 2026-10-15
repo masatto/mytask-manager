@@ -21,7 +21,7 @@ public record RuleRequest(
         @NotNull(message = "開始日は必須です") LocalDate startDate,
         LocalDate endDate,
         Boolean active,
-        @Size(max = 20, message = "サブタスクのひな形は20件までです") @Valid List<Template> subtaskTemplates) {
+        @Size(max = 20, message = "サブタスクのひな形は20件までです") List<@Valid Template> subtaskTemplates) {
 
     public record Template(
             @NotBlank(message = "サブタスクのタイトルは必須です") @Size(max = 200, message = "タイトルは200文字以内で入力してください") String title,
