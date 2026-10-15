@@ -67,7 +67,7 @@ export function TaskGroups({ groups, showCompletedTime, selectedId, onOpen }: Ta
             {group.items.map(({ task, subtasks, contextOnly, progress }) => {
               const expanded = !collapsed.has(task.id)
               return (
-                <li key={task.id}>
+                <li key={task.id} className={subtasks.length > 0 && expanded ? styles.withSubtasks : undefined}>
                   <TaskRow
                     task={task}
                     groupDate={group.date}
@@ -85,7 +85,7 @@ export function TaskGroups({ groups, showCompletedTime, selectedId, onOpen }: Ta
                   {subtasks.length > 0 && expanded && (
                     <ul className={styles.list} aria-label={`「${task.title}」のサブタスク`}>
                       {subtasks.map((sub) => (
-                        <li key={sub.id}>
+                        <li key={sub.id} className={styles.subtaskItem}>
                           <TaskRow
                             task={sub}
                             groupDate={group.date}

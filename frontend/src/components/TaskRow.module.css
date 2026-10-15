@@ -93,14 +93,17 @@ button.expander:hover {
 }
 
 .subtask {
-  /* 親の開閉ボタン（18px）＋間隔（10px）の分だけ字下げして、チェックボックスの位置をそろえる */
-  padding-left: 40px;
+  /*
+   * 親のタイトルの開始位置まで字下げする：余白 12 ＋ 開閉 18 ＋ チェック 16 ＋ 優先度 14 ＋ 間隔 10×3 ＝ 90px。
+   * 左の空いた所に、親とつなぐガイド線を引く（TaskGroups.module.css）
+   */
+  padding-left: 90px;
   min-height: 34px;
 }
 
 .subtask .title {
   padding: 6px 0;
-  font-size: 13.5px;
+  font-size: 13px;
 }
 
 .context .title {
