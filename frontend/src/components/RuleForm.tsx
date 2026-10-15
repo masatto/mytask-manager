@@ -194,19 +194,21 @@ export function RuleForm({ rule, onClose, onCreated, onDeleted, onDirtyChange }:
     }
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!rule) {
       return
     }
-    deleteRule.mutate(rule.id, {
-      onSuccess: () => {
-        onDirtyChange(false)
-        onDeleted()
-        showToast({ message: 'ルールを削除しました' })
-      },
-      onError: () => showToast({ message: '削除できませんでした' }),
-    })
     setConfirmingDelete(false)
+    // 削除後はルールの詳細データが消えてこのフォームがすぐ外れることがあるので、mutateAsync で待つ
+    try {
+      await deleteRule.mutateAsync(rule.id)
+    } catch {
+      showToast({ message: '削除できませんでした' })
+      return
+    }
+    onDirtyChange(false)
+    onDeleted()
+    showToast({ message: 'ルールを削除しました' })
   }
 
   const saving = createRule.isPending || updateRule.isPending
@@ -214,7 +216,7 @@ export function RuleForm({ rule, onClose, onCreated, onDeleted, onDirtyChange }:
   return (
     <form className={formStyles.form} onSubmit={handleSubmit(onSubmit)} noValidate>
       <div className={formStyles.toolbar}>
-        <button type="button" className={formStyles.iconButton} onClick={onClose} aria-label="閉じる">
+        <button type="button" className={formStyles.iconButton} onClick={onClose} aria-label="閉じる" data-hotkey="close-panel">
           ×
         </button>
         {rule && (

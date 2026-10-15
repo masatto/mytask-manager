@@ -60,7 +60,7 @@ export function TaskDetailPanel({
 function PanelHeader({ onClose }: { onClose: () => void }) {
   return (
     <div className={styles.header}>
-      <button type="button" className={styles.close} onClick={onClose} aria-label="閉じる">
+      <button type="button" className={styles.close} onClick={onClose} aria-label="閉じる" data-hotkey="close-panel">
         ×
       </button>
     </div>

@@ -40,6 +40,11 @@ public class TaskController {
         return taskService.list(TaskView.fromParam(view), offset, limit);
     }
 
+    @GetMapping("/search")
+    public TaskListResponse search(@RequestParam(defaultValue = "") String q) {
+        return taskService.search(q);
+    }
+
     @GetMapping("/counts")
     public TaskCountsResponse counts() {
         return taskService.counts();

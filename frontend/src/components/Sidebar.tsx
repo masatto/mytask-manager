@@ -1,7 +1,9 @@
+import { useEffect } from 'react'
 import { NavLink } from 'react-router'
 import type { TaskCounts } from '../api/types.ts'
 import { useTaskCounts } from '../hooks/useTasks.ts'
 import { VIEWS, type ViewKey } from '../views.ts'
+import { SearchBox } from './SearchBox.tsx'
 import styles from './Sidebar.module.css'
 
 function linkClass({ isActive }: { isActive: boolean }) {
@@ -25,9 +27,15 @@ function countOf(view: ViewKey, counts: TaskCounts | undefined): number | undefi
 export function Sidebar() {
   const { data: counts } = useTaskCounts()
 
+  // ブラウザのタブにも「今日」の件数を出す（ほかのタブで作業中でも気づけるように）
+  useEffect(() => {
+    document.title = counts && counts.today > 0 ? `(${counts.today}) mytask-manager` : 'mytask-manager'
+  }, [counts])
+
   return (
     <nav className={styles.sidebar} aria-label="メインメニュー">
       <span className={styles.brand}>mytask-manager</span>
+      <SearchBox />
       <ul className={styles.list}>
         {VIEWS.map((view) => {
           const count = countOf(view.key, counts)
@@ -62,6 +70,9 @@ export function Sidebar() {
           </NavLink>
         </li>
       </ul>
+      <p className={styles.shortcuts} aria-label="キーボードショートカット">
+        <kbd>N</kbd> 追加 ・ <kbd>/</kbd> 検索 ・ <kbd>Esc</kbd> 閉じる
+      </p>
     </nav>
   )
 }

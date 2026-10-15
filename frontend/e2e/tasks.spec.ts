@@ -50,3 +50,17 @@ test('未保存の変更があるとき、サイドバーで移動しようと�
   await expect(page).toHaveURL(/\/no-due\?task=\d+/)
   await expect(taskPanel(page).getByRole('textbox', { name: 'タイトル' })).toHaveValue(`${title}（編集中）`)
 })
+
+test('タスクを削除するとパネルが閉じ、一覧から消える', async ({ page }) => {
+  const title = unique('削除するタスク')
+  await page.goto('/no-due')
+  await quickAdd(page, title)
+  await page.getByRole('button', { name: title, exact: true }).click()
+  await taskPanel(page).getByRole('button', { name: '削除' }).click()
+  await page.getByRole('alertdialog', { name: 'このタスクを削除しますか？' }).getByRole('button', { name: '削除' }).click()
+
+  await expect(page.getByText('削除しました')).toBeVisible()
+  await expect(taskPanel(page)).toBeHidden()
+  await expect(page).toHaveURL(/\/no-due$/)
+  await expect(page.getByRole('button', { name: title, exact: true })).toBeHidden()
+})

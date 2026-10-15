@@ -18,6 +18,7 @@ export const taskKeys = {
   list: (view: ViewKey) => ['tasks', 'list', view] as const,
   counts: () => ['tasks', 'counts'] as const,
   detail: (id: number) => ['tasks', 'detail', id] as const,
+  search: (q: string) => ['tasks', 'search', q] as const,
 }
 
 export function fetchTaskList(view: ViewKey, offset = 0): Promise<TaskListResponse> {
@@ -27,6 +28,11 @@ export function fetchTaskList(view: ViewKey, offset = 0): Promise<TaskListRespon
     params.set('limit', String(DONE_PAGE_SIZE))
   }
   return apiFetch(`/tasks?${params}`)
+}
+
+/** タイトル・メモの部分一致検索。完了済みも含み、最大100行 */
+export function searchTasks(q: string): Promise<TaskListResponse> {
+  return apiFetch(`/tasks/search?${new URLSearchParams({ q })}`)
 }
 
 export function fetchTaskCounts(): Promise<TaskCounts> {

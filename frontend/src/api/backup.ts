@@ -22,3 +22,14 @@ export function importBackup(json: string, dryRun: false): Promise<void>
 export function importBackup(json: string, dryRun: boolean): Promise<ImportSummary | void> {
   return apiFetch(`/backup/import?dryRun=${dryRun}`, { method: 'POST', body: json })
 }
+
+export type AutoBackupStatus = {
+  directory: string
+  keep: number
+  files: { name: string; size: number; createdAt: string | null }[]
+}
+
+/** 自動バックアップの保存先と保存済みファイル（新しい順） */
+export function fetchAutoBackupStatus(): Promise<AutoBackupStatus> {
+  return apiFetch('/backup/auto')
+}

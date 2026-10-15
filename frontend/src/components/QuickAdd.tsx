@@ -58,6 +58,7 @@ export function QuickAdd({ dueDate, placeholder, parentId, compact = false }: Qu
         aria-label={parentId === undefined ? 'タスクを追加' : 'サブタスクを追加'}
         maxLength={200}
         enterKeyHint="done"
+        data-hotkey={compact ? undefined : 'quick-add'}
       />
       {createTask.isError && <span className={styles.error}>登録できませんでした</span>}
     </div>

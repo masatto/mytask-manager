@@ -127,7 +127,9 @@
 }
 
 .textButton {
+  flex: none;
   padding: 4px 8px;
+  white-space: nowrap;
   border: none;
   border-radius: 6px;
   background: none;
@@ -320,4 +322,25 @@
 
 .ruleLink:hover {
   background: var(--color-accent-soft);
+}
+
+.quickDates {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.quickDate {
+  padding: 2px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg);
+  color: var(--color-text-sub);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.quickDate:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }

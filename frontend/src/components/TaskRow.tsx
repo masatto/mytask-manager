@@ -22,6 +22,8 @@ type TaskRowProps = {
   /** サブタスクの開閉。指定がなければ開閉ボタンを出さない */
   expanded?: boolean
   onToggleExpand?: () => void
+  /** 指定すると、行にマウスを乗せたとき「明日へ」ボタンを出す */
+  onPostpone?: (task: Task) => void
 }
 
 function dueLabel(task: Task, groupDate: string | null): string {
@@ -45,6 +47,7 @@ export function TaskRow({
   progress,
   expanded,
   onToggleExpand,
+  onPostpone,
 }: TaskRowProps) {
   const due = showCompletedTime
     ? task.completedAt && !contextOnly
@@ -92,6 +95,16 @@ export function TaskRow({
       >
         {task.title}
       </button>
+      {onPostpone && (
+        <button
+          type="button"
+          className={styles.postpone}
+          onClick={() => onPostpone(task)}
+          aria-label={`「${task.title}」を明日に延期`}
+        >
+          明日へ
+        </button>
+      )}
       {task.status === 'IN_PROGRESS' && <span className={styles.badge}>進行中</span>}
       {progress && progress.total > 0 && (
         <span className={styles.progress} aria-label={`サブタスク ${progress.done}/${progress.total} 完了`}>
