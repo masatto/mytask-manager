@@ -23,6 +23,14 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
             """)
     long countDoneBetween(Instant from, Instant to);
 
+    /** 指定した期間に完了にした親タスク（完了日時の新しい順） */
+    @Query("""
+            SELECT t FROM Task t
+            WHERE t.parentId IS NULL AND t.completedAt >= :from AND t.completedAt < :to
+            ORDER BY t.completedAt DESC, t.id DESC
+            """)
+    List<Task> findDoneBetween(Instant from, Instant to);
+
     /** 指定した親のサブタスクを作成順に */
     List<Task> findByParentIdInOrderByIdAsc(Collection<Long> parentIds);
 

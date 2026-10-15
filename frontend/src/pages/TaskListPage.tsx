@@ -1,3 +1,4 @@
+import { DoneTodaySection } from '../components/DoneTodaySection.tsx'
 import { PageTitle } from '../components/PageTitle.tsx'
 import { QuickAdd } from '../components/QuickAdd.tsx'
 import { TaskGroups } from '../components/TaskGroups.tsx'
@@ -44,6 +45,7 @@ export function TaskListPage({ view }: TaskListPageProps) {
       ) : (
         <OpenList view={view} selectedId={selectedId} onOpen={handleOpen} />
       )}
+      {view === 'today' && <DoneTodaySection selectedId={selectedId} onOpen={handleOpen} />}
 
       {panel}
     </div>

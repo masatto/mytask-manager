@@ -48,7 +48,7 @@ test('Today に今日の進み具合を出す', async () => {
   })
   renderApp('/today')
 
-  expect(await screen.findByRole('img', { name: '今日の進み具合：5件中3件完了' })).toHaveTextContent('3/5 完了')
+  expect(await screen.findByRole('img', { name: '今日の進み具合：3件完了、残り2件' })).toHaveTextContent('3件完了・残り2件')
 })
 
 describe('詳細パネル', () => {
@@ -124,4 +124,28 @@ test('設定画面の自動バックアップ一覧から復元できる（検�
 
   expect(await screen.findByText('orbit-auto-20261015.json からインポートしました')).toBeInTheDocument()
   expect(requests.some((r) => r.path === '/backup/auto/orbit-auto-20261015.json/import?dryRun=false')).toBe(true)
+})
+
+test('Today の一番下に「今日完了」を出し、開くと並び、チェックを外すと未完了に戻せる', async () => {
+  const done = makeTask({ id: 8, title: '健康診断の予約', status: 'DONE', completedAt: `${today}T15:51:00+09:00` })
+  const { requests } = installFakeApi({
+    'GET /tasks/counts': () => ({ status: 200, body: { today: 0, overdue: 0, upcoming: 0, noDue: 0, doneToday: 1 } }),
+    'GET /tasks?view=today': () => ({ status: 200, body: { items: [], hasMore: false } }),
+    'GET /tasks?view=done-today': () => ({ status: 200, body: { items: [listItem(done)], hasMore: false } }),
+    'PATCH /tasks/8/status': () => ({ status: 200, body: { changed: [{ id: 8, previousStatus: 'DONE', status: 'TODO' }] } }),
+  })
+  renderApp('/today')
+  const user = userEvent.setup()
+
+  expect(await screen.findByRole('img', { name: '今日の進み具合：1件完了、残り0件' })).toBeInTheDocument()
+  const toggle = await screen.findByRole('button', { name: /今日完了/ })
+  expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  expect(screen.queryByRole('button', { name: '健康診断の予約' })).not.toBeInTheDocument()
+
+  await user.click(toggle)
+  const section = screen.getByRole('region', { name: '今日完了' })
+  expect(within(section).getByText('完了 15:51')).toBeInTheDocument()
+  await user.click(within(section).getByRole('checkbox', { name: '「健康診断の予約」を完了にする' }))
+
+  await waitFor(() => expect(requests.find((r) => r.method === 'PATCH')?.body).toEqual({ status: 'TODO' }))
 })

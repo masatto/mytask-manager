@@ -17,6 +17,7 @@ export const taskKeys = {
   all: ['tasks'] as const,
   list: (view: ViewKey) => ['tasks', 'list', view] as const,
   counts: () => ['tasks', 'counts'] as const,
+  doneToday: () => ['tasks', 'list', 'done-today'] as const,
   detail: (id: number) => ['tasks', 'detail', id] as const,
   search: (q: string) => ['tasks', 'search', q] as const,
 }
@@ -33,6 +34,11 @@ export function fetchTaskList(view: ViewKey, offset = 0): Promise<TaskListRespon
 /** タイトル・メモの部分一致検索。完了済みも含み、最大100行 */
 export function searchTasks(q: string): Promise<TaskListResponse> {
   return apiFetch(`/tasks/search?${new URLSearchParams({ q })}`)
+}
+
+/** 今日完了にした親タスク（Today の「今日完了」。件数は counts.doneToday と同じ） */
+export function fetchDoneToday(): Promise<TaskListResponse> {
+  return apiFetch('/tasks?view=done-today')
 }
 
 export function fetchTaskCounts(): Promise<TaskCounts> {

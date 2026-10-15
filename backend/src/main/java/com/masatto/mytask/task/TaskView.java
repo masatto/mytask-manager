@@ -6,7 +6,9 @@ import com.masatto.mytask.common.ApiException;
 
 /** 一覧のビュー（api-design 3.2） */
 public enum TaskView {
-    TODAY("today"), UPCOMING("upcoming"), NO_DUE("no-due"), DONE("done");
+    TODAY("today"), UPCOMING("upcoming"), NO_DUE("no-due"), DONE("done"),
+    /** 今日完了にした親タスク（Today の「今日完了」と進み具合。counts.doneToday と同じ基準） */
+    DONE_TODAY("done-today");
 
     private final String param;
 
