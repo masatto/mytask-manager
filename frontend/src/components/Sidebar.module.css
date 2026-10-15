@@ -39,7 +39,8 @@
   color: var(--color-text);
 }
 
-.active {
+.active,
+.active:hover {
   background: var(--color-accent-soft);
   color: var(--color-accent);
   font-weight: 600;
@@ -49,4 +50,21 @@
   margin: 12px;
   border: none;
   border-top: 1px solid var(--color-border);
+}
+
+.count {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  color: var(--color-text-sub);
+  font-size: 12px;
+  font-weight: 400;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.alert {
+  background: var(--color-danger);
+  color: #fff;
+  font-weight: 600;
 }

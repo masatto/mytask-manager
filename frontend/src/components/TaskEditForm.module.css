@@ -1,0 +1,210 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 24px 24px;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 -8px 12px;
+}
+
+.iconButton {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--color-text-sub);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.iconButton:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
+.deleteButton {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--color-danger);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.deleteButton:hover {
+  background: #fdecee;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.checkbox {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
+.titleInput {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.titleInput:hover {
+  border-color: var(--color-border);
+}
+
+.titleInput:focus {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  align-items: center;
+  gap: 14px 12px;
+  margin: 24px 0;
+}
+
+.fields dt {
+  color: var(--color-text-sub);
+  font-size: 13px;
+}
+
+.fields dd {
+  margin: 0;
+}
+
+.select,
+.input {
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+  font-size: 14px;
+}
+
+.input:disabled {
+  background: var(--color-sidebar);
+  color: var(--color-text-sub);
+}
+
+.radioGroup {
+  display: flex;
+  gap: 16px;
+}
+
+.radio {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.dueRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.textButton {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--color-text-sub);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.textButton:hover {
+  background: var(--color-hover);
+}
+
+.readonly {
+  font-size: 14px;
+}
+
+.memoLabel {
+  margin-bottom: 6px;
+  color: var(--color-text-sub);
+  font-size: 13px;
+}
+
+.memo {
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.fieldError {
+  margin: 4px 0 0;
+  color: var(--color-danger);
+  font-size: 12px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.primary,
+.secondary {
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.primary {
+  border: none;
+  background: var(--color-accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.primary:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.secondary {
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.secondary:hover {
+  background: var(--color-hover);
+}
+
+.meta {
+  margin: 20px 0 0;
+  color: var(--color-text-sub);
+  font-size: 12px;
+  text-align: right;
+}
