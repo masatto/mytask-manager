@@ -306,3 +306,18 @@
   color: var(--color-danger);
   font-weight: 600;
 }
+
+.ruleLink {
+  margin-left: 6px;
+  padding: 2px 6px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--color-accent);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ruleLink:hover {
+  background: var(--color-accent-soft);
+}

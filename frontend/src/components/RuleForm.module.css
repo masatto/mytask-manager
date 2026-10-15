@@ -1,0 +1,111 @@
+.heading {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.wide {
+  width: 100%;
+}
+
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.hint {
+  color: var(--color-text-sub);
+  font-size: 12px;
+}
+
+.weekdays {
+  display: flex;
+  gap: 6px;
+}
+
+/* 曜日はチェックボックスを隠して、丸いトグルボタンとして見せる */
+.weekday input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.weekday span {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.weekday span:hover {
+  background: var(--color-hover);
+}
+
+.weekday input:checked + span {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.weekday input:focus-visible + span {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.templates,
+.preview {
+  margin-top: 24px;
+}
+
+.templateList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.templateItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.templateTitle {
+  flex: 1;
+  min-width: 0;
+}
+
+.templateError {
+  flex-basis: 100%;
+}
+
+.addTemplate {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--color-accent);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.addTemplate:hover {
+  background: var(--color-accent-soft);
+}
+
+.previewDates {
+  margin: 0;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}

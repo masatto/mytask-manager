@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -19,6 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.masatto.mytask.common.ApiException;
+import com.masatto.mytask.rule.RecurrenceRule;
+import com.masatto.mytask.rule.RecurrenceRuleRepository;
 import com.masatto.mytask.task.dto.StatusChangeRequest;
 import com.masatto.mytask.task.dto.StatusChangeResponse;
 import com.masatto.mytask.task.dto.StatusRestoreRequest;
@@ -39,6 +42,7 @@ public class TaskService {
     static final int DONE_PAGE_MAX = 100;
 
     private final TaskRepository taskRepository;
+    private final RecurrenceRuleRepository ruleRepository;
     private final Clock clock;
 
     // ---- 一覧・件数 ----------------------------------------------------------
@@ -64,16 +68,32 @@ public class TaskService {
 
     /** 未完了ビューの行。件数はこの行数と一致させる（api-design 3.3） */
     private List<TaskListItem> openItems(TaskView view, List<Task> openTasks, LocalDateTime now) {
-        List<Task> matched = openTasks.stream().filter(openViewCondition(view, now.toLocalDate())).toList();
+        Map<Long, Task> openById = openTasks.stream().collect(Collectors.toMap(Task::getId, Function.identity()));
+        Predicate<LocalDate> condition = openViewCondition(view, now.toLocalDate());
+        List<Task> matched = openTasks.stream()
+                .filter(t -> condition.test(effectiveDueDate(t, openById)))
+                .toList();
         return builderFor(matched, now).buildOpen(matched);
     }
 
-    /** ビューの判定（api-design 3.2）。親・サブタスクを問わずタスク1件ごとに判定する */
-    private static Predicate<Task> openViewCondition(TaskView view, LocalDate today) {
+    /**
+     * ビューの判定に使う期限日（api-design 3.2）。親・サブタスクを問わずタスク1件ごとに判定するが、
+     * 期限のないサブタスクは親の期限に従う（期限ありの親の下にある期限なしのサブタスクで、
+     * 親が「期限なし」ビューにまで出てしまわないようにするため。繰り返しのひな形から作るサブタスクは期限を持たない）。
+     */
+    private static LocalDate effectiveDueDate(Task task, Map<Long, Task> openById) {
+        if (task.getDueDate() != null || !task.isSubtask()) {
+            return task.getDueDate();
+        }
+        Task parent = openById.get(task.getParentId());
+        return parent == null ? null : parent.getDueDate();
+    }
+
+    private static Predicate<LocalDate> openViewCondition(TaskView view, LocalDate today) {
         return switch (view) {
-            case TODAY -> t -> t.getDueDate() != null && !t.getDueDate().isAfter(today);
-            case UPCOMING -> t -> t.getDueDate() != null && t.getDueDate().isAfter(today);
-            case NO_DUE -> t -> t.getDueDate() == null;
+            case TODAY -> due -> due != null && !due.isAfter(today);
+            case UPCOMING -> due -> due != null && due.isAfter(today);
+            case NO_DUE -> due -> due == null;
             case DONE -> throw new IllegalArgumentException("DONE is not an open view");
         };
     }
@@ -101,7 +121,21 @@ public class TaskService {
                 .collect(Collectors.toMap(Task::getId, Function.identity()));
         Map<Long, List<Task>> subtasks = taskRepository.findByParentIdInOrderByIdAsc(rootIds).stream()
                 .collect(Collectors.groupingBy(Task::getParentId));
-        return new TaskListBuilder(parents, subtasks, now, clock.getZone());
+        // 繰り返しから生成されるのは親タスクだけなので、親のルール名だけ引けばよい
+        return new TaskListBuilder(parents, subtasks, ruleTitles(parents.values()), now, clock.getZone());
+    }
+
+    /** 生成元ルールのID → タイトル */
+    private Map<Long, String> ruleTitles(Collection<Task> tasks) {
+        Set<Long> ruleIds = tasks.stream()
+                .map(Task::getRecurrenceRuleId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (ruleIds.isEmpty()) {
+            return Map.of();
+        }
+        return ruleRepository.findAllById(ruleIds).stream()
+                .collect(Collectors.toMap(RecurrenceRule::getId, RecurrenceRule::getTitle));
     }
 
     // ---- 詳細 ---------------------------------------------------------------
@@ -250,7 +284,7 @@ public class TaskService {
     }
 
     private TaskResponse toResponse(Task task, LocalDateTime now) {
-        return TaskResponse.of(task, now, clock.getZone());
+        return TaskResponse.of(task, now, clock.getZone(), ruleTitles(List.of(task)));
     }
 
     private static void validateDue(LocalDate dueDate, LocalTime dueTime) {

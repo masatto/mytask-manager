@@ -43,17 +43,20 @@ final class TaskListBuilder {
 
     private final Map<Long, Task> parentsById;
     private final Map<Long, List<Task>> subtasksByParent;
+    private final Map<Long, String> ruleTitles;
     private final LocalDateTime now;
     private final ZoneId zone;
 
     /**
      * @param parentsById      matched に含まれるタスクの親（ルート）すべて
      * @param subtasksByParent 親IDごとの全サブタスク（作成順）
+     * @param ruleTitles       生成元ルールのID → タイトル
      */
-    TaskListBuilder(Map<Long, Task> parentsById, Map<Long, List<Task>> subtasksByParent, LocalDateTime now,
-            ZoneId zone) {
+    TaskListBuilder(Map<Long, Task> parentsById, Map<Long, List<Task>> subtasksByParent,
+            Map<Long, String> ruleTitles, LocalDateTime now, ZoneId zone) {
         this.parentsById = parentsById;
         this.subtasksByParent = subtasksByParent;
+        this.ruleTitles = ruleTitles;
         this.now = now;
         this.zone = zone;
     }
@@ -117,6 +120,6 @@ final class TaskListBuilder {
     }
 
     private TaskResponse toResponse(Task task) {
-        return TaskResponse.of(task, now, zone);
+        return TaskResponse.of(task, now, zone, ruleTitles);
     }
 }

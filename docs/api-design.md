@@ -1,4 +1,4 @@
-# mytask-manager API設計 v1.1
+# mytask-manager API設計 v1.2
 
 [requirements.md](requirements.md) v1.1 と [screen-design.md](screen-design.md) v1.0 に基づく。
 
@@ -128,6 +128,8 @@
 | `upcoming` | 未完了、かつ期限が明日以降 |
 | `no-due` | 未完了、かつ期限なし |
 | `done` | 完了 |
+
+- 期限のないサブタスクは、親の期限で判定する。例えば期限が今日の親の下にある期限なしのサブタスクは、「期限なし」ではなく「今日」として扱う（繰り返しのひな形から作るサブタスクは期限を持たないため、親が「期限なし」ビューにも出てしまうのを防ぐ）
 
 - 並び順はサーバーで確定させて返す。フロントは受け取った順に表示し、`viewDate` でグループ分けするだけにする
 - 並び順：
@@ -275,8 +277,8 @@ TaskResponse に次の項目を加えて返す。
 | GET `/rules` | 一覧を作成順で返す。`{ "items": RuleResponse[] }` |
 | GET `/rules/{id}` | RuleResponse を返す |
 | POST `/rules` | 201 と RuleResponse。保存した直後に、そのルールの生成処理（5章）を実行する |
-| PUT `/rules/{id}` | 200 と RuleResponse。変更は次回生成分から反映する |
-| PATCH `/rules/{id}/active` | `{ "active": false }` を受け取る。200 と RuleResponse |
+| PUT `/rules/{id}` | 200 と RuleResponse。変更は次回生成分から反映する。保存後に生成処理を実行する（例：曜日に今日を追加すると、今日の分がすぐ出る。生成済みの回は作り直さない） |
+| PATCH `/rules/{id}/active` | `{ "active": false }` を受け取る。200 と RuleResponse。再開（true）したときは生成処理を実行し、停止中に逃した回のうち直近の1件を生成する |
 | DELETE `/rules/{id}` | 204。生成済みのタスクは残し、ルールへの参照だけを外す |
 | POST `/rules/preview` | RuleRequest の `pattern`・`startDate`・`endDate` だけを使う。今日以降の発生日を最大3件、`{ "occurrences": ["2026-10-19", "2026-10-26", "2026-11-02"] }` で返す |
 
@@ -347,3 +349,4 @@ TaskResponse に次の項目を加えて返す。
 |---|---|---|
 | 2026-10-14 | 1.0 | 初版 |
 | 2026-10-15 | 1.1 | Phase 2 の実装に合わせて `viewDate` の定義を明確化。完了済みの親へのサブタスク追加時の動作を追記 |
+| 2026-10-15 | 1.2 | 期限のないサブタスクは親の期限でビューを判定。ルールの更新・再開時にも生成処理を実行 |

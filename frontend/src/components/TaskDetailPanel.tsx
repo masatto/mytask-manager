@@ -10,10 +10,18 @@ type TaskDetailPanelProps = {
   onDirtyChange: (dirty: boolean) => void
   /** 親⇔サブタスクの切り替え */
   onOpenTask: (id: number) => void
+  onOpenRule: (ruleId: number) => void
 }
 
 /** タスク詳細パネル（screen-design 4章） */
-export function TaskDetailPanel({ taskId, onClose, onDeleted, onDirtyChange, onOpenTask }: TaskDetailPanelProps) {
+export function TaskDetailPanel({
+  taskId,
+  onClose,
+  onDeleted,
+  onDirtyChange,
+  onOpenTask,
+  onOpenRule,
+}: TaskDetailPanelProps) {
   const { data: task, isPending, isError, error } = useTask(taskId)
 
   return (
@@ -42,6 +50,7 @@ export function TaskDetailPanel({ taskId, onClose, onDeleted, onDirtyChange, onO
           onDeleted={onDeleted}
           onDirtyChange={onDirtyChange}
           onOpenTask={onOpenTask}
+          onOpenRule={onOpenRule}
         />
       )}
     </aside>

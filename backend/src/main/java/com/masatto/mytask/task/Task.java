@@ -63,7 +63,7 @@ public class Task {
 
     private Byte parentLevel;
 
-    // 繰り返し関連（Phase 3 で使う）
+    /** 生成元の繰り返しルール。ルールを削除すると DB 側で NULL になる（ON DELETE SET NULL） */
     private Long recurrenceRuleId;
 
     private LocalDate occurrenceDate;
@@ -86,6 +86,12 @@ public class Task {
         task.createdAt = now;
         task.updatedAt = now;
         return task;
+    }
+
+    /** 繰り返しルールから生成したタスクとして、生成元と発生日を記録する（親タスクのみ） */
+    public void linkRecurrence(Long ruleId, LocalDate occurrenceDate) {
+        this.recurrenceRuleId = ruleId;
+        this.occurrenceDate = occurrenceDate;
     }
 
     /** 時刻だけの期限は持てない（呼び出し側で入力チェック済みであること） */
