@@ -1,9 +1,8 @@
-import { useNavigate, useSearchParams } from 'react-router'
+import { PageTitle } from '../components/PageTitle.tsx'
 import { QuickAdd } from '../components/QuickAdd.tsx'
-import { TaskDetailPanel } from '../components/TaskDetailPanel.tsx'
 import { TaskGroups } from '../components/TaskGroups.tsx'
 import { useDoneTaskList, useOpenTaskList } from '../hooks/useTasks.ts'
-import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard.tsx'
+import { useTaskPanel } from '../hooks/useTaskPanel.tsx'
 import { addDays, formatDate, todayKey } from '../lib/date.ts'
 import { groupItems } from '../lib/grouping.ts'
 import { VIEWS, type ViewKey } from '../views.ts'
@@ -19,38 +18,14 @@ type ListProps = {
 }
 
 export function TaskListPage({ view }: TaskListPageProps) {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const navigate = useNavigate()
-  const selectedId = Number(searchParams.get('task')) || null
-  // 詳細パネルに未保存の変更があれば、パネルの切り替えやページ移動の前に D4 を出す
-  const { setDirty, dialog: discardDialog } = useUnsavedChangesGuard()
+  const { selectedId, open: handleOpen, panel } = useTaskPanel()
 
   const today = todayKey()
-  const label = VIEWS.find((v) => v.key === view)?.label
-
-  const openPanel = (id: number) =>
-    setSearchParams((prev) => {
-      prev.set('task', String(id))
-      return prev
-    })
-  const closePanel = () =>
-    setSearchParams((prev) => {
-      prev.delete('task')
-      return prev
-    })
-
-  const handleOpen = (id: number) => {
-    if (id !== selectedId) {
-      openPanel(id)
-    }
-  }
+  const viewDef = VIEWS.find((v) => v.key === view)!
 
   return (
     <div className={selectedId ? styles.withPanel : undefined}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>{label}</h1>
-        {view === 'today' && <span className={styles.date}>{formatDate(today)}</span>}
-      </header>
+      <PageTitle label={viewDef.label} sub={viewDef.sub} extra={view === 'today' ? formatDate(today) : undefined} />
 
       {view === 'today' && <QuickAdd dueDate={today} placeholder="タスクを追加（Enterで登録・期限は今日）" />}
       {view === 'upcoming' && <QuickAdd dueDate={addDays(today, 1)} placeholder="タスクを追加（Enterで登録・期限は明日）" />}
@@ -62,19 +37,7 @@ export function TaskListPage({ view }: TaskListPageProps) {
         <OpenList view={view} selectedId={selectedId} onOpen={handleOpen} />
       )}
 
-      {selectedId && (
-        <TaskDetailPanel
-          key={selectedId}
-          taskId={selectedId}
-          onClose={closePanel}
-          onDeleted={closePanel}
-          onOpenTask={handleOpen}
-          onOpenRule={(ruleId) => navigate(`/rules?rule=${ruleId}`)}
-          onDirtyChange={setDirty}
-        />
-      )}
-
-      {discardDialog}
+      {panel}
     </div>
   )
 }

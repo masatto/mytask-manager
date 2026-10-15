@@ -5,6 +5,7 @@ import {
   fetchTask,
   fetchTaskCounts,
   fetchTaskList,
+  searchTasks,
   taskKeys,
   updateTask,
   DONE_PAGE_SIZE,
@@ -28,6 +29,14 @@ export function useDoneTaskList() {
     initialPageParam: 0,
     getNextPageParam: (lastPage, _pages, lastOffset) =>
       lastPage.hasMore ? lastOffset + DONE_PAGE_SIZE : undefined,
+  })
+}
+
+export function useTaskSearch(q: string) {
+  return useQuery({
+    queryKey: taskKeys.search(q),
+    queryFn: () => searchTasks(q),
+    enabled: q.trim() !== '',
   })
 }
 

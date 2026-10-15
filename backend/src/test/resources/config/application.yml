@@ -2,3 +2,8 @@ spring:
   datasource:
     # テストでは本番データを触らないようインメモリDBを使う
     url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
+
+mytask:
+  # 起動時の自動バックアップなどがホームディレクトリに書き込まないよう、ビルド用フォルダーの中にする
+  data-dir: target/test-data
+  backup-dir: target/test-backups

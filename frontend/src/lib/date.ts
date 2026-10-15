@@ -46,3 +46,9 @@ export function formatDateTime(iso: string): string {
 export function todayKey(): string {
   return toDateKey(new Date())
 }
+
+/** key より後の、最も近い月曜日（key が月曜なら翌週の月曜） */
+export function nextMonday(key: string): string {
+  const day = parseDateKey(key).getDay() // 日曜=0, 月曜=1
+  return addDays(key, ((8 - day) % 7) || 7)
+}

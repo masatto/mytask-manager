@@ -107,7 +107,7 @@ class BackupApiTest {
         mockMvc.perform(get("/api/backup"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition",
-                        containsString("attachment; filename=\"mytask-manager-20261014-1000.json\"")))
+                        containsString("attachment; filename=\"orbit-20261014-1000.json\"")))
                 .andExpect(jsonPath("$.format").value("mytask-manager-backup"))
                 .andExpect(jsonPath("$.version").value(1))
                 .andExpect(jsonPath("$.exportedAt").value("2026-10-14T10:00:00+09:00"))

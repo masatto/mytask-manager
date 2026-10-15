@@ -46,7 +46,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: `.\\mvnw.cmd -q spring-boot:run "-Dspring-boot.run.arguments=--server.port=${API_PORT} --mytask.data-dir=${dataDir}"`,
+      command: `.\\mvnw.cmd -q spring-boot:run "-Dspring-boot.run.arguments=--server.port=${API_PORT} --mytask.data-dir=${dataDir} --mytask.backup-dir=${dataDir}/backups"`,
       cwd: '../backend',
       url: `http://localhost:${API_PORT}/api/health`,
       reuseExistingServer: false,

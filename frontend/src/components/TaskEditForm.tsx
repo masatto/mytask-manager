@@ -15,7 +15,7 @@ import {
 } from '../api/types.ts'
 import { isChecked, useToggleComplete } from '../hooks/useToggleComplete.tsx'
 import { useDeleteTask, useUpdateTask } from '../hooks/useTasks.ts'
-import { formatDate, formatDateTime } from '../lib/date.ts'
+import { addDays, formatDate, formatDateTime, nextMonday, todayKey } from '../lib/date.ts'
 import { useToast } from '../toast/useToast.ts'
 import { ConfirmDialog } from './ConfirmDialog.tsx'
 import { PriorityMark } from './PriorityMark.tsx'
@@ -166,22 +166,25 @@ export function TaskEditForm({
     save(values)
   }
 
-  const handleDelete = () => {
-    deleteTask.mutate(task.id, {
-      onSuccess: () => {
-        onDirtyChange(false)
-        onDeleted()
-        showToast({ message: '削除しました' })
-      },
-      onError: () => showToast({ message: '削除できませんでした' }),
-    })
+  const handleDelete = async () => {
     setConfirmingDelete(false)
+    // 削除後は詳細データが消えてこのフォームがすぐ外れることがある。mutate() のコールバックは外れると
+    // 呼ばれないので、外れても必ず完了する mutateAsync で待つ
+    try {
+      await deleteTask.mutateAsync(task.id)
+    } catch {
+      showToast({ message: '削除できませんでした' })
+      return
+    }
+    onDirtyChange(false)
+    onDeleted()
+    showToast({ message: '削除しました' })
   }
 
   return (
     <form className={styles.form} onSubmit={handleSubmit(onSubmit)} noValidate>
       <div className={styles.toolbar}>
-        <button type="button" className={styles.iconButton} onClick={onClose} aria-label="閉じる">
+        <button type="button" className={styles.iconButton} onClick={onClose} aria-label="閉じる" data-hotkey="close-panel">
           ×
         </button>
         <button type="button" className={styles.deleteButton} onClick={() => setConfirmingDelete(true)}>
@@ -272,6 +275,22 @@ export function TaskEditForm({
             >
               クリア
             </button>
+          </div>
+          <div className={styles.quickDates} role="group" aria-label="期限をすばやく設定">
+            {[
+              { label: '今日', date: todayKey() },
+              { label: '明日', date: addDays(todayKey(), 1) },
+              { label: '来週月曜', date: nextMonday(todayKey()) },
+            ].map(({ label, date }) => (
+              <button
+                key={label}
+                type="button"
+                className={styles.quickDate}
+                onClick={() => setValue('dueDate', date, { shouldDirty: true })}
+              >
+                {label}
+              </button>
+            ))}
           </div>
           {errors.dueTime && <p className={styles.fieldError}>{errors.dueTime.message}</p>}
         </dd>

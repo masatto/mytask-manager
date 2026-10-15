@@ -29,7 +29,7 @@ function ExistingRule({ ruleId, ...props }: Omit<RuleEditPanelProps, 'ruleId'> &
   return (
     <>
       <div className={styles.header}>
-        <button type="button" className={styles.close} onClick={props.onClose} aria-label="閉じる">
+        <button type="button" className={styles.close} onClick={props.onClose} aria-label="閉じる" data-hotkey="close-panel">
           ×
         </button>
       </div>

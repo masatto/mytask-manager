@@ -134,7 +134,7 @@ public class BackupService {
     /** 参照関係など、DB の制約だけでは分かりやすいエラーにならないものを先に確かめる */
     private static void validate(BackupDocument doc) {
         if (!BackupDocument.FORMAT.equals(doc.format()) || !Integer.valueOf(BackupDocument.VERSION).equals(doc.version())) {
-            throw invalid("mytask-manager のバックアップファイル（形式バージョン " + BackupDocument.VERSION + "）ではありません");
+            throw invalid("Orbit のバックアップファイル（形式バージョン " + BackupDocument.VERSION + "）ではありません");
         }
         if (doc.tasks() == null || doc.rules() == null) {
             throw invalid("tasks または rules がありません");

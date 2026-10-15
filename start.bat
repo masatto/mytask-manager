@@ -1,5 +1,5 @@
 @echo off
-rem Start mytask-manager (backend: 8080 / frontend: 5173)
+rem Start Orbit (backend: 8080 / frontend: 5173)
 setlocal
 cd /d "%~dp0"
 
@@ -19,10 +19,10 @@ if not exist "frontend\node_modules" (
   popd
 )
 
-start "mytask-manager backend" /min cmd /k "cd /d ""%~dp0backend"" && .\mvnw.cmd spring-boot:run"
-start "mytask-manager frontend" /min cmd /k "cd /d ""%~dp0frontend"" && npm run dev"
+start "Orbit backend" /min cmd /k "cd /d ""%~dp0backend"" && .\mvnw.cmd spring-boot:run"
+start "Orbit frontend" /min cmd /k "cd /d ""%~dp0frontend"" && npm run dev"
 
-echo Starting mytask-manager... the browser will open when ready.
+echo Starting Orbit... the browser will open when ready.
 :wait
 timeout /t 2 /nobreak >nul
 curl -s -o nul http://localhost:8080/api/health || goto wait

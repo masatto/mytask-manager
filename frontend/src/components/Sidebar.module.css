@@ -1,17 +1,15 @@
 .sidebar {
+  /* 長い一覧をスクロールしても、検索欄とメニューが見えたままになるようにする */
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: 24px 12px;
   background: var(--color-sidebar);
   border-right: 1px solid var(--color-border);
-}
-
-.brand {
-  padding: 0 12px 16px;
-  font-weight: 700;
-  font-size: 15px;
-  letter-spacing: 0.02em;
 }
 
 .list {
@@ -67,4 +65,39 @@
   background: var(--color-danger);
   color: #fff;
   font-weight: 600;
+}
+
+.shortcuts {
+  margin: auto 0 0;
+  padding: 16px 12px 0;
+  color: var(--color-text-sub);
+  font-size: 11px;
+}
+
+.shortcuts kbd {
+  padding: 0 4px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-bg);
+  font-family: inherit;
+  font-size: 11px;
+}
+
+.labels {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.2;
+}
+
+.labelEn {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.labelJa {
+  color: var(--color-text-sub);
+  font-size: 11px;
+  font-weight: 400;
 }

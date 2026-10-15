@@ -11,7 +11,7 @@ const BACKUP = {
   rules: [],
 }
 
-function backupFile(content: string, name = 'mytask-manager-20261015-2100.json') {
+function backupFile(content: string, name = 'orbit-20261015-2100.json') {
   return new File([content], name, { type: 'application/json' })
 }
 
@@ -29,7 +29,7 @@ describe('S5 設定（バックアップ）', () => {
       'GET /backup': () => ({
         status: 200,
         body: BACKUP,
-        headers: { 'Content-Disposition': 'attachment; filename="mytask-manager-20261015-2100.json"' },
+        headers: { 'Content-Disposition': 'attachment; filename="orbit-20261015-2100.json"' },
       }),
     })
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
@@ -39,9 +39,9 @@ describe('S5 設定（バックアップ）', () => {
     expect(await screen.findByText('最終エクスポート：まだエクスポートしていません')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'JSONをエクスポート' }))
 
-    expect(await screen.findByText('mytask-manager-20261015-2100.json をダウンロードしました')).toBeInTheDocument()
+    expect(await screen.findByText('orbit-20261015-2100.json をダウンロードしました')).toBeInTheDocument()
     expect(click).toHaveBeenCalledTimes(1)
-    expect((click.mock.instances[0] as unknown as HTMLAnchorElement).download).toBe('mytask-manager-20261015-2100.json')
+    expect((click.mock.instances[0] as unknown as HTMLAnchorElement).download).toBe('orbit-20261015-2100.json')
     expect(screen.queryByText('最終エクスポート：まだエクスポートしていません')).not.toBeInTheDocument()
     expect(localStorage.getItem('mytask-manager.lastExportAt')).not.toBeNull()
     click.mockRestore()
@@ -69,7 +69,7 @@ describe('S5 設定（バックアップ）', () => {
 
     await user.click(within(dialog).getByRole('button', { name: '置き換える' }))
 
-    expect(await screen.findByText('mytask-manager-20261015-2100.json からインポートしました')).toBeInTheDocument()
+    expect(await screen.findByText('orbit-20261015-2100.json からインポートしました')).toBeInTheDocument()
     expect(requests.find((r) => r.path === '/backup/import?dryRun=false')?.body).toEqual(BACKUP)
   })
 

@@ -29,6 +29,6 @@ test('サブタスクを追加し、未完了のサブタスクが残る親を�
   await dialog.getByRole('button', { name: 'すべて完了' }).click()
   await expect(page.getByText('完了にしました')).toBeVisible()
 
-  await page.getByRole('link', { name: /^完了済み/ }).click()
+  await page.getByRole('link', { name: /^Done/ }).click()
   await expect(page.getByLabel('サブタスク 3/3 完了').first()).toBeVisible()
 })

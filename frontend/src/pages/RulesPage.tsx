@@ -1,11 +1,13 @@
 import { useSearchParams } from 'react-router'
 import type { Rule } from '../api/types.ts'
+import { PageTitle } from '../components/PageTitle.tsx'
 import { RuleEditPanel } from '../components/RuleEditPanel.tsx'
 import { useRules, useSetRuleActive } from '../hooks/useRules.ts'
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard.tsx'
 import { formatDate } from '../lib/date.ts'
 import { describePattern } from '../lib/recurrence.ts'
 import { useToast } from '../toast/useToast.ts'
+import { PAGE_TITLES } from '../views.ts'
 import styles from './RulesPage.module.css'
 
 /** S3 繰り返しルール一覧。?rule={id}（新規は ?rule=new）で S4 の編集パネルを開く */
@@ -31,12 +33,14 @@ export function RulesPage() {
 
   return (
     <div className={selected ? styles.withPanel : undefined}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>繰り返しルール</h1>
-        <button type="button" className={styles.newButton} onClick={() => setPanel('new')}>
-          ＋ 新規ルール
-        </button>
-      </header>
+      <PageTitle
+        {...PAGE_TITLES.rules}
+        extra={
+          <button type="button" className={styles.newButton} onClick={() => setPanel('new')}>
+            ＋ 新規ルール
+          </button>
+        }
+      />
 
       <RuleList selectedId={typeof selected === 'number' ? selected : null} onOpen={(id) => setPanel(id)} />
 

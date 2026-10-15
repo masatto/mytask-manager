@@ -1,7 +1,10 @@
+import { useEffect } from 'react'
 import { NavLink } from 'react-router'
 import type { TaskCounts } from '../api/types.ts'
 import { useTaskCounts } from '../hooks/useTasks.ts'
-import { VIEWS, type ViewKey } from '../views.ts'
+import { PAGE_TITLES, VIEWS, type ViewKey } from '../views.ts'
+import { Logo } from './Logo.tsx'
+import { SearchBox } from './SearchBox.tsx'
 import styles from './Sidebar.module.css'
 
 function linkClass({ isActive }: { isActive: boolean }) {
@@ -25,9 +28,15 @@ function countOf(view: ViewKey, counts: TaskCounts | undefined): number | undefi
 export function Sidebar() {
   const { data: counts } = useTaskCounts()
 
+  // ブラウザのタブにも「今日」の件数を出す（ほかのタブで作業中でも気づけるように）
+  useEffect(() => {
+    document.title = counts && counts.today > 0 ? `(${counts.today}) Orbit` : 'Orbit'
+  }, [counts])
+
   return (
     <nav className={styles.sidebar} aria-label="メインメニュー">
-      <span className={styles.brand}>mytask-manager</span>
+      <Logo />
+      <SearchBox />
       <ul className={styles.list}>
         {VIEWS.map((view) => {
           const count = countOf(view.key, counts)
@@ -35,7 +44,7 @@ export function Sidebar() {
           return (
             <li key={view.key}>
               <NavLink to={view.path} className={linkClass}>
-                {view.label}
+                <NavLabel label={view.label} sub={view.sub} />
                 {count !== undefined && count > 0 && (
                   <span
                     className={alert ? `${styles.count} ${styles.alert}` : styles.count}
@@ -53,15 +62,27 @@ export function Sidebar() {
       <ul className={styles.list}>
         <li>
           <NavLink to="/rules" className={linkClass}>
-            繰り返しルール
+            <NavLabel {...PAGE_TITLES.rules} />
           </NavLink>
         </li>
         <li>
           <NavLink to="/settings" className={linkClass}>
-            設定
+            <NavLabel {...PAGE_TITLES.settings} />
           </NavLink>
         </li>
       </ul>
+      <p className={styles.shortcuts} aria-label="キーボードショートカット">
+        <kbd>N</kbd> 追加 ・ <kbd>/</kbd> 検索 ・ <kbd>Esc</kbd> 閉じる
+      </p>
     </nav>
+  )
+}
+
+/** メニューの項目名。英語を大きく、日本語を小さく2段で出す */
+function NavLabel({ label, sub }: { label: string; sub: string }) {
+  return (
+    <span className={styles.labels}>
+      <span className={styles.labelEn}>{label}</span> <span className={styles.labelJa}>{sub}</span>
+    </span>
   )
 }

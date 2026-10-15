@@ -27,8 +27,13 @@
 
 body {
   margin: 0;
-  min-width: 1280px;
   background: var(--color-bg);
+}
+
+/* キーボード操作時のフォーカス表示をアプリの色にそろえる */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 button,

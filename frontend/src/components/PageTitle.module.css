@@ -1,0 +1,32 @@
+.header {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+}
+
+.label {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.sub {
+  color: var(--color-text-sub);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.extra {
+  margin-left: auto;
+  color: var(--color-text-sub);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}

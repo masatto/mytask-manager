@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -136,6 +137,43 @@ public class TaskService {
         }
         return ruleRepository.findAllById(ruleIds).stream()
                 .collect(Collectors.toMap(RecurrenceRule::getId, RecurrenceRule::getTitle));
+    }
+
+    // ---- 検索 ---------------------------------------------------------------
+
+    static final int SEARCH_MAX_ROWS = 100;
+    static final int SEARCH_MAX_LENGTH = 100;
+
+    /**
+     * タイトル・メモの部分一致検索。結果は一覧と同じく親単位の行で返す。
+     * 未完了の行を一覧と同じ並び順で先に、完了済みの行を完了日時の新しい順で後に並べる。
+     */
+    public TaskListResponse search(String q) {
+        String query = q == null ? "" : q.strip();
+        if (query.isEmpty() || query.length() > SEARCH_MAX_LENGTH) {
+            throw ApiException.validation("q", "検索語は1〜" + SEARCH_MAX_LENGTH + "文字で入力してください");
+        }
+        LocalDateTime now = LocalDateTime.now(clock);
+        List<Task> matched = taskRepository.search(escapeLike(query));
+
+        List<Task> open = matched.stream().filter(t -> !t.isDone()).toList();
+        List<Task> done = matched.stream()
+                .filter(Task::isDone)
+                .sorted(Comparator.comparing(Task::getCompletedAt).reversed())
+                .toList();
+        List<TaskListItem> openRows = builderFor(open, now).buildOpen(open);
+        // 同じ親の行が未完了側にあれば、完了済み側には出さない（行の重複を避ける）
+        Set<Long> openRoots = openRows.stream().map(i -> i.task().id()).collect(Collectors.toSet());
+        List<Task> doneOnly = done.stream().filter(t -> !openRoots.contains(t.rootId())).toList();
+        List<TaskListItem> rows = new ArrayList<>(openRows);
+        rows.addAll(builderFor(doneOnly, now).buildDone(doneOnly));
+
+        return new TaskListResponse(rows.stream().limit(SEARCH_MAX_ROWS).toList(), rows.size() > SEARCH_MAX_ROWS);
+    }
+
+    /** LIKE の特殊文字をエスケープする（ESCAPE '\'） */
+    private static String escapeLike(String value) {
+        return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
     // ---- 詳細 ---------------------------------------------------------------

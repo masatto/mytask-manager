@@ -113,3 +113,26 @@ button.expander:hover {
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
+
+/* 「明日へ」は行にマウスを乗せたとき（またはキーボードで選んだとき）だけ出す */
+.postpone {
+  flex: none;
+  padding: 2px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  color: var(--color-text-sub);
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.row:hover .postpone,
+.postpone:focus-visible {
+  opacity: 1;
+}
+
+.postpone:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}

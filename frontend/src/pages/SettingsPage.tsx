@@ -1,11 +1,12 @@
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState, type ChangeEvent } from 'react'
 import { ApiRequestError } from '../api/client.ts'
-import { exportBackup, importBackup, type ImportSummary } from '../api/backup.ts'
+import { exportBackup, fetchAutoBackupStatus, importBackup, type ImportSummary } from '../api/backup.ts'
 import { ConfirmDialog } from '../components/ConfirmDialog.tsx'
+import { PageTitle } from '../components/PageTitle.tsx'
 import { formatDateTime } from '../lib/date.ts'
 import { useToast } from '../toast/useToast.ts'
-import pageStyles from './Page.module.css'
+import { PAGE_TITLES } from '../views.ts'
 import styles from './SettingsPage.module.css'
 
 /** 最終エクスポート日時はこのブラウザにだけ保存する目安（screen-design 7章） */
@@ -110,7 +111,7 @@ export function SettingsPage() {
 
   return (
     <section>
-      <h1 className={pageStyles.title}>設定</h1>
+      <PageTitle {...PAGE_TITLES.settings} />
 
       <section className={styles.card} aria-labelledby="backup-heading">
         <h2 id="backup-heading" className={styles.heading}>
@@ -156,6 +157,8 @@ export function SettingsPage() {
         )}
       </section>
 
+      <AutoBackupSection />
+
       {pending && (
         <ConfirmDialog
           message="現在のデータはすべて置き換えられます。"
@@ -165,6 +168,62 @@ export function SettingsPage() {
           onConfirm={() => handleImport(pending)}
           onCancel={() => setPending(null)}
         />
+      )}
+    </section>
+  )
+}
+
+/** 自動バックアップ（毎日1回、サーバーが保存先フォルダーに JSON を保存する） */
+function AutoBackupSection() {
+  const { data, isError } = useQuery({ queryKey: ['backup', 'auto'], queryFn: fetchAutoBackupStatus })
+  const { showToast } = useToast()
+
+  const copyPath = async (path: string) => {
+    try {
+      await navigator.clipboard.writeText(path)
+      showToast({ message: '保存先のパスをコピーしました' })
+    } catch {
+      showToast({ message: 'コピーできませんでした' })
+    }
+  }
+
+  return (
+    <section className={styles.card} aria-labelledby="auto-backup-heading">
+      <h2 id="auto-backup-heading" className={styles.heading}>
+        自動バックアップ
+      </h2>
+      {isError ? (
+        <p className={styles.description}>状態を取得できませんでした</p>
+      ) : !data ? (
+        <p className={styles.description}>読み込み中…</p>
+      ) : (
+        <>
+          <p className={styles.description}>
+            アプリの起動時と毎日0時過ぎに1回、上のエクスポートと同じ JSON を自動で保存し、直近{data.keep}
+            日分を残します。復元するときは、上の「JSONをインポート...」でこのフォルダーのファイルを選んでください。
+          </p>
+          <div className={styles.row}>
+            <code className={styles.path}>{data.directory}</code>
+            <button type="button" className={styles.smallButton} onClick={() => copyPath(data.directory)}>
+              パスをコピー
+            </button>
+          </div>
+          {data.files.length === 0 ? (
+            <p className={styles.meta}>まだ保存されていません</p>
+          ) : (
+            <ul className={styles.fileList} aria-label="保存済みの自動バックアップ">
+              {data.files.slice(0, 5).map((file) => (
+                <li key={file.name}>
+                  <span>{file.name}</span>
+                  <span className={styles.meta}>
+                    {file.createdAt ? formatDateTime(file.createdAt) : ''}・{Math.max(1, Math.round(file.size / 1024))}KB
+                  </span>
+                </li>
+              ))}
+              {data.files.length > 5 && <li className={styles.meta}>ほか{data.files.length - 5}件</li>}
+            </ul>
+          )}
+        </>
       )}
     </section>
   )

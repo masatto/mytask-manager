@@ -1,8 +1,11 @@
 import { Outlet } from 'react-router'
+import { useGlobalShortcuts } from '../hooks/useGlobalShortcuts.ts'
 import { Sidebar } from './Sidebar.tsx'
 import styles from './Layout.module.css'
 
 export function Layout() {
+  useGlobalShortcuts()
+
   return (
     <div className={styles.layout}>
       <Sidebar />

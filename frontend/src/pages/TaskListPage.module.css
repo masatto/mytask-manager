@@ -3,23 +3,15 @@
   margin-right: 420px;
 }
 
-.header {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  margin-bottom: 20px;
+/* 狭い画面では一覧を押しつぶさず、パネルを一覧の上に重ねる */
+@media (max-width: 1100px) {
+  .withPanel {
+    margin-right: 0;
+  }
 }
 
-.title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-}
 
-.date {
-  color: var(--color-text-sub);
-  font-size: 15px;
-}
+
 
 .empty {
   margin: 48px 0;
@@ -84,4 +76,11 @@
   to {
     background-position: -200% 0;
   }
+}
+
+.resultCount {
+  margin: -8px 0 12px;
+  padding: 0 12px;
+  color: var(--color-text-sub);
+  font-size: 13px;
 }

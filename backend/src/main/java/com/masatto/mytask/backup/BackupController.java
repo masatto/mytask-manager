@@ -22,11 +22,18 @@ public class BackupController {
     private static final DateTimeFormatter FILE_TIMESTAMP = DateTimeFormatter.ofPattern("yyyyMMdd-HHmm");
 
     private final BackupService backupService;
+    private final AutoBackupService autoBackupService;
+
+    /** 自動バックアップの保存先と、保存済みのファイル */
+    @GetMapping("/auto")
+    public AutoBackupService.Status autoBackupStatus() {
+        return autoBackupService.status();
+    }
 
     @GetMapping
     public ResponseEntity<BackupDocument> export() {
         BackupDocument doc = backupService.export();
-        String filename = "mytask-manager-" + doc.exportedAt().format(FILE_TIMESTAMP) + ".json";
+        String filename = "orbit-" + doc.exportedAt().format(FILE_TIMESTAMP) + ".json";
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(filename).build().toString())
                 .body(doc);

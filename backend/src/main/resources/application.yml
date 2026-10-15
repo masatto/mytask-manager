@@ -18,4 +18,6 @@ spring:
 mytask:
   # データベースファイルの置き場所。リポジトリの外に置き、git clean等で消えないようにする
   data-dir: ${user.home}/.mytask-manager/data
+  # 自動バックアップ（毎日1回のJSON。直近14日分を残す）の保存先
+  backup-dir: ${user.home}/.mytask-manager/backups
   zone: Asia/Tokyo

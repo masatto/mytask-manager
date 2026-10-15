@@ -1,5 +1,8 @@
 import { useState } from 'react'
+import type { Task } from '../api/types.ts'
+import { useReschedule } from '../hooks/useReschedule.ts'
 import { isChecked, useToggleComplete } from '../hooks/useToggleComplete.tsx'
+import { addDays, todayKey } from '../lib/date.ts'
 import type { TaskGroup } from '../lib/grouping.ts'
 import { TaskRow } from './TaskRow.tsx'
 import styles from './TaskGroups.module.css'
@@ -13,6 +16,13 @@ type TaskGroupsProps = {
 
 export function TaskGroups({ groups, showCompletedTime, selectedId, onOpen }: TaskGroupsProps) {
   const { toggle, pending, confirmDialog } = useToggleComplete()
+  const reschedule = useReschedule()
+  const today = todayKey()
+  // 期限が今日以前の未完了タスクだけ「明日へ」を出す
+  const postponeFor = (task: Task) =>
+    task.status !== 'DONE' && task.dueDate !== null && task.dueDate <= today
+      ? () => reschedule(task, addDays(today, 1), '明日')
+      : undefined
   // 初期状態はすべて開いた状態。閉じた親のIDだけを持つ
   const [collapsed, setCollapsed] = useState<ReadonlySet<number>>(new Set())
 
@@ -54,6 +64,7 @@ export function TaskGroups({ groups, showCompletedTime, selectedId, onOpen }: Ta
                     progress={progress}
                     expanded={subtasks.length > 0 ? expanded : undefined}
                     onToggleExpand={subtasks.length > 0 ? () => toggleExpand(task.id) : undefined}
+                    onPostpone={postponeFor(task)}
                   />
                   {subtasks.length > 0 && expanded && (
                     <ul className={styles.list} aria-label={`「${task.title}」のサブタスク`}>
@@ -68,6 +79,7 @@ export function TaskGroups({ groups, showCompletedTime, selectedId, onOpen }: Ta
                             onToggle={toggle}
                             onOpen={onOpen}
                             isSubtask
+                            onPostpone={postponeFor(sub)}
                           />
                         </li>
                       ))}
