@@ -7,7 +7,8 @@ import styles from './TodayProgress.module.css'
  */
 export function TodayProgress() {
   const { data } = useTaskCounts()
-  if (!data) {
+  // 古いバックエンド（doneToday を返さない）につながっているときは出さない
+  if (!data || typeof data.doneToday !== 'number') {
     return null
   }
   const done = data.doneToday

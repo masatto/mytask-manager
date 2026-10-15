@@ -88,13 +88,25 @@ export function TaskRow({
         aria-label={`「${task.title}」を完了にする`}
       />
       <PriorityMark priority={task.priority} />
-      <button
-        type="button"
-        className={checked ? `${styles.title} ${styles.done}` : styles.title}
-        onClick={() => onOpen(task.id)}
-      >
-        {task.title}
-      </button>
+      {/* 左：タイトルと、そのタスクの状態（進行中・サブタスクの進み具合） */}
+      <div className={styles.main}>
+        <button
+          type="button"
+          className={checked ? `${styles.title} ${styles.done}` : styles.title}
+          onClick={() => onOpen(task.id)}
+        >
+          {task.title}
+        </button>
+        {task.status === 'IN_PROGRESS' && <span className={styles.badge}>進行中</span>}
+        {progress && progress.total > 0 && (
+          <span
+            className={progress.done === progress.total ? `${styles.progress} ${styles.progressDone}` : styles.progress}
+            aria-label={`サブタスク ${progress.done}/${progress.total} 完了`}
+          >
+            ✓ {progress.done}/{progress.total}
+          </span>
+        )}
+      </div>
       {onPostpone && (
         <button
           type="button"
@@ -105,18 +117,11 @@ export function TaskRow({
           明日へ
         </button>
       )}
-      {task.status === 'IN_PROGRESS' && <span className={styles.badge}>進行中</span>}
-      {progress && progress.total > 0 && (
-        <span className={styles.progress} aria-label={`サブタスク ${progress.done}/${progress.total} 完了`}>
-          {progress.done}/{progress.total}
-        </span>
-      )}
-      {due && <span className={task.overdue ? `${styles.due} ${styles.overdue}` : styles.due}>{due}</span>}
-      {task.recurrence && (
-        <span className={styles.recurrence} role="img" aria-label="繰り返し">
-          ↻
-        </span>
-      )}
+      {/* 右：「いつ」だけ。幅を固定して、全行で縦にそろえる（繰り返しの印の場所も常に取っておく） */}
+      <span className={task.overdue ? `${styles.due} ${styles.overdue}` : styles.due}>{due}</span>
+      <span className={styles.recurrence} role={task.recurrence ? 'img' : undefined} aria-label={task.recurrence ? '繰り返し' : undefined}>
+        {task.recurrence ? '↻' : ''}
+      </span>
     </div>
   )
 }

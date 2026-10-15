@@ -13,6 +13,14 @@ if not defined JAVA_HOME (
   exit /b 1
 )
 
+rem The everyday app (start.bat) uses the same port 8080; the dev backend cannot start while it runs
+curl -sf -o nul http://127.0.0.1:8080/index.html
+if not errorlevel 1 (
+  echo [ERROR] The everyday version of Orbit ^(start.bat^) is running. Run stop.bat first.
+  pause
+  exit /b 1
+)
+
 if not exist "frontend\node_modules" (
   echo Installing frontend dependencies...
   pushd frontend
