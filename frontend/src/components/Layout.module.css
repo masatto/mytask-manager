@@ -1,10 +1,17 @@
 .layout {
   display: grid;
-  grid-template-columns: 220px 1fr;
+  /* minmax(0, 1fr)：本文の中身が長くても、画面幅を超えて横にはみ出さないようにする */
+  grid-template-columns: 220px minmax(0, 1fr);
   min-height: 100vh;
 }
 
 .main {
   min-width: 0;
   padding: 32px 40px;
+}
+
+@media (max-width: 900px) {
+  .main {
+    padding: 24px 20px;
+  }
 }

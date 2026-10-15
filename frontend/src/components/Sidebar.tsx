@@ -3,6 +3,7 @@ import { NavLink } from 'react-router'
 import type { TaskCounts } from '../api/types.ts'
 import { useTaskCounts } from '../hooks/useTasks.ts'
 import { VIEWS, type ViewKey } from '../views.ts'
+import { Logo } from './Logo.tsx'
 import { SearchBox } from './SearchBox.tsx'
 import styles from './Sidebar.module.css'
 
@@ -34,7 +35,7 @@ export function Sidebar() {
 
   return (
     <nav className={styles.sidebar} aria-label="メインメニュー">
-      <span className={styles.brand}>mytask-manager</span>
+      <Logo />
       <SearchBox />
       <ul className={styles.list}>
         {VIEWS.map((view) => {

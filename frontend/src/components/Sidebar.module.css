@@ -12,13 +12,6 @@
   border-right: 1px solid var(--color-border);
 }
 
-.brand {
-  padding: 0 12px 16px;
-  font-weight: 700;
-  font-size: 15px;
-  letter-spacing: 0.02em;
-}
-
 .list {
   display: flex;
   flex-direction: column;
