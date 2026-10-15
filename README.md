@@ -21,7 +21,7 @@
 |---|---|
 | Windows 10/11 | `start.bat` / `stop.bat` は Windows 用 |
 | JDK 21 | [Eclipse Temurin 21](https://adoptium.net/) を推奨（`winget install EclipseAdoptium.Temurin.21.JDK`）。`JAVA_HOME` がなくても `C:\Program Files\Eclipse Adoptium\jdk-21*` を自動で探す |
-| Node.js 24 以上 | フロントエンドの起動に使う |
+| Node.js 24 以上 | アプリを作る（ビルドする）ときだけ使う。動かすときは不要 |
 
 Maven のインストールは不要（同梱の `mvnw` を使う）。
 
@@ -29,17 +29,23 @@ Maven のインストールは不要（同梱の `mvnw` を使う）。
 
 ### 起動と終了
 
-- **起動**：`start.bat` をダブルクリックする。バックエンドとフロントエンドが最小化されたウィンドウで立ち上がり、準備ができるとブラウザで http://localhost:5173/ が開く（初回は依存関係のダウンロードで数分かかる）
-- **終了**：`stop.bat` をダブルクリックする（「Orbit backend」「Orbit frontend」の2つのウィンドウを閉じても同じ）
+| ファイル | 内容 |
+|---|---|
+| `start.bat` | **普段使い**。画面を組み込んだ1つのアプリ（`app\orbit.jar`）を、ウィンドウを出さずに裏で起動し、ブラウザで http://127.0.0.1:8080/ を開く。すでに動いていればブラウザを開くだけ。初回（アプリがまだないとき）は自動でビルドする（数分） |
+| `stop.bat` | 停止。`start.bat` と `start-dev.bat` のどちらで起動していても止める |
+| `build.bat` | アプリを作り直す。**コードを更新したら実行する**（1分ほど）。動いていれば止めて入れ替え、起動し直す |
+| `start-dev.bat` | **開発用**。画面を変更するとすぐ反映される（http://127.0.0.1:5173/ 。ウィンドウが2つ開く）。普段使いとは同時に動かせないので、切り替えるときは `stop.bat` を先に実行する |
+
+- **ログ**：普段使いのアプリのログは `%USERPROFILE%\.mytask-manager\logs\orbit.log` に残る（起動しないときはここを見る）
+- **接続できる範囲**：自分の PC からだけ（`127.0.0.1` で待ち受ける）。ログイン機能がないので、同じネットワークの他の PC には公開しない
 
 起動中に PC の日付が変わると、0時に繰り返しタスクが生成される。アプリを止めていた日の分は、次に起動したときに**直近の1回分だけ**生成される。
 
 ### ログイン時に自動で起動する（任意）
 
 1. `Win + R` で `shell:startup` を開く
-2. `start.bat` のショートカットをそのフォルダーに置く
-
-ブラウザも毎回開くので、不要なら `start.bat` の最後の `start "" http://localhost:5173/` の行を消す。
+2. `start.bat` のショートカットを作ってそのフォルダーに置く
+3. ショートカットのプロパティで、リンク先の末尾に ` --background` を付け（ブラウザを開かずに起動する）、「実行時の大きさ」を「最小化」にする
 
 ### データの保存場所
 
@@ -69,6 +75,7 @@ Maven のインストールは不要（同梱の `mvnw` を使う）。
 
 | 用途 | コマンド | 場所 |
 |---|---|---|
+| 開発用にまとめて起動 | `start-dev.bat`（下の2つを別ウィンドウで起動） | ルート |
 | バックエンドの起動 | `.\mvnw.cmd spring-boot:run`（ポート 8080） | `backend/` |
 | バックエンドのテスト | `.\mvnw.cmd test` | `backend/` |
 | フロントエンドの起動 | `npm run dev`（ポート 5173、`/api` を 8080 へ転送） | `frontend/` |
@@ -87,7 +94,10 @@ Maven のインストールは不要（同梱の `mvnw` を使う）。
 
 ```
 mytask-manager/
-├── start.bat / stop.bat   起動・終了
+├── start.bat / stop.bat   起動・終了（普段使い）
+├── build.bat              普段使い用アプリ（app\orbit.jar）を作る
+├── start-dev.bat          開発用の起動
+├── app/                   build.bat が作るアプリ（Git の管理外）
 ├── docs/                  要件定義・設計書
 ├── backend/               Spring Boot 4 / Java 21 / Spring Data JPA / H2 / Flyway
 │   └── src/main/java/com/masatto/mytask/

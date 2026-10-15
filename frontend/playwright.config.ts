@@ -48,7 +48,7 @@ export default defineConfig({
     {
       command: `.\\mvnw.cmd -q spring-boot:run "-Dspring-boot.run.arguments=--server.port=${API_PORT} --mytask.data-dir=${dataDir} --mytask.backup-dir=${dataDir}/backups"`,
       cwd: '../backend',
-      url: `http://localhost:${API_PORT}/api/health`,
+      url: `http://127.0.0.1:${API_PORT}/api/health`,
       reuseExistingServer: false,
       timeout: 180_000,
       env: JAVA_HOME ? { JAVA_HOME } : {},
