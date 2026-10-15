@@ -64,8 +64,11 @@ public class AutoBackupService {
     public record BackupFile(String name, long size, OffsetDateTime createdAt) {
     }
 
+    /**
+     * @param mirrorFiles コピー先にある自動バックアップ（新しい順）。コピー先が未設定・見つからないときは空
+     */
     public record Status(String directory, int keep, List<BackupFile> files, String mirrorDirectory,
-            String mirrorError) {
+            String mirrorError, List<BackupFile> mirrorFiles) {
     }
 
     @Scheduled(cron = "0 5 0 * * *", zone = "${mytask.zone}")
@@ -214,8 +217,11 @@ public class AutoBackupService {
     }
 
     public Status status() {
+        String mirror = settingsStore.get().mirrorDirectory();
+        List<BackupFile> mirrorFiles = mirror == null ? List.of()
+                : listFiles(Path.of(mirror)).stream().map(this::toBackupFile).toList();
         return new Status(directory.toString(), KEEP, listFiles(directory).stream().map(this::toBackupFile).toList(),
-                settingsStore.get().mirrorDirectory(), lastMirrorError);
+                mirror, lastMirrorError, mirrorFiles);
     }
 
     /** 古いものから削除して KEEP 件にする（自動バックアップのファイル名に合うものだけを数え、ほかのファイルには触れない） */

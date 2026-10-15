@@ -8,6 +8,7 @@ import {
   restoreAutoBackup,
   runBackupNow,
   setBackupMirror,
+  type AutoBackupStatus,
   type ImportSummary,
 } from '../api/backup.ts'
 import { fetchSystemInfo } from '../api/system.ts'
@@ -133,12 +134,15 @@ export function SettingsPage() {
     <section>
       <PageTitle {...PAGE_TITLES.settings} />
 
+      <StorageSection />
+
       <section className={styles.card} aria-labelledby="backup-heading">
         <h2 id="backup-heading" className={styles.heading}>
-          バックアップ
+          手動バックアップ
         </h2>
         <p className={styles.description}>
-          タスクと繰り返しルールを JSON ファイルに保存したり、保存したファイルから復元したりできます。
+          好きなときに、タスクと繰り返しルールを JSON ファイルに保存できます（ブラウザのダウンロード先に保存されます）。
+          保存したファイルを取り込むと、その時点の状態に戻せます。
         </p>
 
         <div className={styles.row}>
@@ -209,15 +213,6 @@ function AutoBackupSection({ onRestore, disabled }: { onRestore: (name: string) 
     onError: () => showToast({ message: 'バックアップできませんでした' }),
   })
 
-  const copyPath = async (path: string) => {
-    try {
-      await navigator.clipboard.writeText(path)
-      showToast({ message: '保存先のパスをコピーしました' })
-    } catch {
-      showToast({ message: 'コピーできませんでした' })
-    }
-  }
-
   return (
     <section className={styles.card} aria-labelledby="auto-backup-heading">
       <h2 id="auto-backup-heading" className={styles.heading}>
@@ -230,16 +225,9 @@ function AutoBackupSection({ onRestore, disabled }: { onRestore: (name: string) 
       ) : (
         <>
           <p className={styles.description}>
-            アプリの起動時と毎日0時過ぎに1回、上のエクスポートと同じ JSON を自動で保存し、直近{data.keep}
-            日分を残します。「復元」で、その時点の状態に戻せます。
+            アプリの起動時と毎日0時過ぎに1回、手動バックアップと同じ JSON を自動で保存し、直近{data.keep}
+            日分を残します（保存場所は上の「② 自動バックアップ」）。「復元」で、その時点の状態に戻せます。
           </p>
-          <div className={styles.row}>
-            <code className={styles.path}>{data.directory}</code>
-            <button type="button" className={styles.smallButton} onClick={() => copyPath(data.directory)}>
-              パスをコピー
-            </button>
-          </div>
-          <MirrorSetting current={data.mirrorDirectory} error={data.mirrorError} />
           {data.files.length === 0 ? (
             <p className={styles.meta}>まだ保存されていません</p>
           ) : (
@@ -250,6 +238,11 @@ function AutoBackupSection({ onRestore, disabled }: { onRestore: (name: string) 
                   <span className={styles.meta}>
                     {file.createdAt ? formatDateTime(file.createdAt) : ''}・{Math.max(1, Math.round(file.size / 1024))}KB
                   </span>
+                  {file.name.startsWith('mytask-manager-') && (
+                    <span className={styles.note} title="アプリ名を Orbit に変える前に作られたファイルです。14日たつと自動で消えます">
+                      名前変更前
+                    </span>
+                  )}
                   <button
                     type="button"
                     className={styles.smallButton}
@@ -264,6 +257,7 @@ function AutoBackupSection({ onRestore, disabled }: { onRestore: (name: string) 
               {data.files.length > 5 && <li className={styles.meta}>ほか{data.files.length - 5}件</li>}
             </ul>
           )}
+          <MirrorSetting current={data.mirrorDirectory} error={data.mirrorError} files={data.mirrorFiles} />
           <div className={styles.row}>
             <button
               type="button"
@@ -285,7 +279,15 @@ function AutoBackupSection({ onRestore, disabled }: { onRestore: (name: string) 
  * 自動バックアップのコピー先。OneDrive などの同期フォルダーを指定すると、この PC のディスクが壊れても
  * バックアップが残る。指定するとすぐに今あるバックアップを写す。
  */
-function MirrorSetting({ current, error }: { current: string | null; error: string | null }) {
+function MirrorSetting({
+  current,
+  error,
+  files,
+}: {
+  current: string | null
+  error: string | null
+  files: AutoBackupStatus['mirrorFiles']
+}) {
   const queryClient = useQueryClient()
   const { showToast } = useToast()
   const [value, setValue] = useState(current ?? '')
@@ -337,6 +339,12 @@ function MirrorSetting({ current, error }: { current: string | null; error: stri
           コピー先に写せませんでした：{error}
         </p>
       )}
+      {!fieldError && !error && current && (
+        <p className={styles.ok}>
+          ✓ コピー済み {files.length}件
+          {files[0]?.createdAt && `（最新 ${files[0].name}・${formatDateTime(files[0].createdAt)}）`}
+        </p>
+      )}
     </div>
   )
 }
@@ -360,14 +368,109 @@ function AboutSection() {
           <dd>Orbit {data.version}</dd>
           <dt>ビルド日時</dt>
           <dd>{data.buildTime ? formatDateTime(data.buildTime) : '—'}</dd>
-          <dt>データの保存先</dt>
-          <dd>
-            <code className={styles.path}>{data.dataDirectory}</code>
-          </dd>
-          <dt>バックアップの保存先</dt>
-          <dd>
-            <code className={styles.path}>{data.backupDirectory}</code>
-          </dd>
+        </dl>
+      )}
+    </section>
+  )
+}
+
+type StorageRow = {
+  label: string
+  path: string | null
+  /** path がないときに代わりに出す説明 */
+  placeholder?: string
+  description: string
+}
+
+/**
+ * 保存場所：Orbit がファイルを置く場所と、それぞれの役割・触ってよいかをまとめて示す。
+ * 場所ごとの説明を一か所に集め、ほかのカードにはパスを出さない。
+ */
+function StorageSection() {
+  const system = useQuery({ queryKey: ['system'], queryFn: fetchSystemInfo, refetchInterval: false })
+  const auto = useQuery({ queryKey: ['backup', 'auto'], queryFn: fetchAutoBackupStatus })
+  const { showToast } = useToast()
+
+  const copyPath = async (path: string) => {
+    try {
+      await navigator.clipboard.writeText(path)
+      showToast({ message: 'パスをコピーしました' })
+    } catch {
+      showToast({ message: 'コピーできませんでした' })
+    }
+  }
+
+  const rows: StorageRow[] = system.data
+    ? [
+        {
+          label: '① データ本体',
+          path: system.data.dataDirectory,
+          description:
+            'タスクと繰り返しルールの「今のデータ」（mytask.mv.db）と、この画面の設定。アプリが使用中なので触らないでください',
+        },
+        {
+          label: '② 自動バックアップ',
+          path: system.data.backupDirectory,
+          description: '毎日1回保存する JSON（直近14日分）。見るのは自由で、消しても①には影響しません',
+        },
+        {
+          label: '③ コピー先',
+          path: auto.data?.mirrorDirectory ?? null,
+          placeholder: '未設定（下の「自動バックアップ」で指定できます）',
+          description: '②と同じファイルのコピー。この PC が壊れたときの保険です',
+        },
+        {
+          label: '④ ログ',
+          path: system.data.logFile,
+          placeholder: '開発用の起動（start-dev.bat）ではファイルに残しません',
+          description: 'アプリの動作記録。起動しないときなどに確認します',
+        },
+        {
+          label: '⑤ 手動バックアップ',
+          path: null,
+          placeholder: 'ブラウザのダウンロード先（ふつうは「ダウンロード」フォルダー）',
+          description: '下の「手動バックアップ」で保存したファイル',
+        },
+      ]
+    : []
+
+  return (
+    <section className={styles.card} aria-labelledby="storage-heading">
+      <h2 id="storage-heading" className={styles.heading}>
+        保存場所
+      </h2>
+      <p className={styles.description}>Orbit のデータとバックアップは、次の場所に置かれます。</p>
+      {system.isError ? (
+        <p className={styles.description}>情報を取得できませんでした</p>
+      ) : !system.data ? (
+        <p className={styles.description}>読み込み中…</p>
+      ) : (
+        <dl className={styles.storage}>
+          {rows.map((row) => (
+            <div key={row.label} className={styles.storageRow}>
+              <dt>{row.label}</dt>
+              <dd>
+                <div className={styles.storagePath}>
+                  {row.path ? (
+                    <>
+                      <code className={styles.path}>{row.path}</code>
+                      <button
+                        type="button"
+                        className={styles.smallButton}
+                        onClick={() => copyPath(row.path!)}
+                        aria-label={`${row.label}のパスをコピー`}
+                      >
+                        パスをコピー
+                      </button>
+                    </>
+                  ) : (
+                    <span className={styles.meta}>{row.placeholder}</span>
+                  )}
+                </div>
+                <p className={styles.storageNote}>{row.description}</p>
+              </dd>
+            </div>
+          ))}
         </dl>
       )}
     </section>

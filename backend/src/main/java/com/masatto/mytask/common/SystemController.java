@@ -21,16 +21,23 @@ public class SystemController {
     private final Clock clock;
     private final String dataDir;
     private final String backupDir;
+    private final String logFile;
 
     public SystemController(ObjectProvider<BuildProperties> buildProperties, Clock clock,
-            @Value("${mytask.data-dir}") String dataDir, @Value("${mytask.backup-dir}") String backupDir) {
+            @Value("${mytask.data-dir}") String dataDir, @Value("${mytask.backup-dir}") String backupDir,
+            @Value("${logging.file.name:}") String logFile) {
         this.buildProperties = buildProperties;
         this.clock = clock;
         this.dataDir = dataDir;
         this.backupDir = backupDir;
+        this.logFile = logFile;
     }
 
-    public record SystemInfo(String version, OffsetDateTime buildTime, String dataDirectory, String backupDirectory) {
+    /**
+     * @param logFile ログファイル。普段使いのアプリ（start.bat）だけがファイルに書く。開発用の起動では null
+     */
+    public record SystemInfo(String version, OffsetDateTime buildTime, String dataDirectory, String backupDirectory,
+            String logFile) {
     }
 
     @GetMapping("/api/system")
@@ -41,6 +48,7 @@ public class SystemController {
                 build != null && build.getTime() != null ? build.getTime().atZone(clock.getZone()).toOffsetDateTime()
                         : null,
                 Path.of(dataDir).toAbsolutePath().normalize().toString(),
-                Path.of(backupDir).toAbsolutePath().normalize().toString());
+                Path.of(backupDir).toAbsolutePath().normalize().toString(),
+                logFile.isBlank() ? null : Path.of(logFile).toAbsolutePath().normalize().toString());
     }
 }

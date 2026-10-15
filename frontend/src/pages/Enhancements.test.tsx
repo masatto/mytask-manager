@@ -155,7 +155,7 @@ test('ブラウザのタブに今日の件数を出す', async () => {
   await waitFor(() => expect(document.title).toBe('(3) Orbit'))
 })
 
-test('設定画面に自動バックアップの保存先と保存済みファイルを出す', async () => {
+test('設定画面に自動バックアップの保存済みファイルを出す（保存先は「保存場所」にまとめる）', async () => {
   installFakeApi({
     'GET /tasks/counts': () => EMPTY_COUNTS,
     'GET /backup/auto': () => ({
@@ -164,13 +164,16 @@ test('設定画面に自動バックアップの保存先と保存済みファ�
         directory: 'C:\\Users\\me\\.mytask-manager\\backups',
         keep: 14,
         files: [{ name: 'mytask-manager-auto-20261015.json', size: 4096, createdAt: '2026-10-15T00:05:00+09:00' }],
+        mirrorDirectory: null,
+        mirrorError: null,
+        mirrorFiles: [],
       },
     }),
   })
   renderApp('/settings')
 
   const section = await screen.findByRole('region', { name: '自動バックアップ' })
-  expect(await within(section).findByText('C:\\Users\\me\\.mytask-manager\\backups')).toBeInTheDocument()
-  expect(within(section).getByText('mytask-manager-auto-20261015.json')).toBeInTheDocument()
+  expect(await within(section).findByText('mytask-manager-auto-20261015.json')).toBeInTheDocument()
+  expect(within(section).queryByText('C:\\Users\\me\\.mytask-manager\\backups')).not.toBeInTheDocument()
   expect(within(section).getByText(/直近14\s*日分/)).toBeInTheDocument()
 })
