@@ -158,7 +158,8 @@ export function SettingsPage() {
 
       {pending && (
         <ConfirmDialog
-          message={`現在のデータはすべて置き換えられます。（タスク${pending.summary.current.tasks}件 → ${pending.summary.incoming.tasks}件、ルール${pending.summary.current.rules}件 → ${pending.summary.incoming.rules}件）`}
+          message="現在のデータはすべて置き換えられます。"
+          detail={`タスク ${pending.summary.current.tasks}件 → ${pending.summary.incoming.tasks}件 ／ ルール ${pending.summary.current.rules}件 → ${pending.summary.incoming.rules}件`}
           confirmLabel="置き換える"
           danger
           onConfirm={() => handleImport(pending)}

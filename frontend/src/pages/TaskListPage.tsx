@@ -1,10 +1,9 @@
-import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
-import { ConfirmDialog } from '../components/ConfirmDialog.tsx'
 import { QuickAdd } from '../components/QuickAdd.tsx'
 import { TaskDetailPanel } from '../components/TaskDetailPanel.tsx'
 import { TaskGroups } from '../components/TaskGroups.tsx'
 import { useDoneTaskList, useOpenTaskList } from '../hooks/useTasks.ts'
+import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard.tsx'
 import { addDays, formatDate, todayKey } from '../lib/date.ts'
 import { groupItems } from '../lib/grouping.ts'
 import { VIEWS, type ViewKey } from '../views.ts'
@@ -23,9 +22,8 @@ export function TaskListPage({ view }: TaskListPageProps) {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const selectedId = Number(searchParams.get('task')) || null
-  // 詳細パネルに未保存の変更があるか（D4 の判定に使う）
-  const [panelDirty, setPanelDirty] = useState(false)
-  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null)
+  // 詳細パネルに未保存の変更があれば、パネルの切り替えやページ移動の前に D4 を出す
+  const { setDirty, dialog: discardDialog } = useUnsavedChangesGuard()
 
   const today = todayKey()
   const label = VIEWS.find((v) => v.key === view)?.label
@@ -41,18 +39,9 @@ export function TaskListPage({ view }: TaskListPageProps) {
       return prev
     })
 
-  /** 未保存の変更があれば D4 を出してから実行する */
-  const guard = (action: () => void) => {
-    if (panelDirty) {
-      setPendingAction(() => action)
-    } else {
-      action()
-    }
-  }
-
   const handleOpen = (id: number) => {
     if (id !== selectedId) {
-      guard(() => openPanel(id))
+      openPanel(id)
     }
   }
 
@@ -77,28 +66,15 @@ export function TaskListPage({ view }: TaskListPageProps) {
         <TaskDetailPanel
           key={selectedId}
           taskId={selectedId}
-          onClose={() => guard(closePanel)}
+          onClose={closePanel}
           onDeleted={closePanel}
           onOpenTask={handleOpen}
-          onOpenRule={(ruleId) => guard(() => navigate(`/rules?rule=${ruleId}`))}
-          onDirtyChange={setPanelDirty}
+          onOpenRule={(ruleId) => navigate(`/rules?rule=${ruleId}`)}
+          onDirtyChange={setDirty}
         />
       )}
 
-      {pendingAction && (
-        <ConfirmDialog
-          message="変更を破棄しますか？"
-          confirmLabel="破棄"
-          cancelLabel="編集に戻る"
-          danger
-          onConfirm={() => {
-            setPanelDirty(false)
-            pendingAction()
-            setPendingAction(null)
-          }}
-          onCancel={() => setPendingAction(null)}
-        />
-      )}
+      {discardDialog}
     </div>
   )
 }

@@ -156,6 +156,48 @@ describe('TaskListPage', () => {
     await waitFor(() => expect(router.state.location.search).toBe(''))
   })
 
+  test('未保存の変更がある状態でサイドバーから別のビューへ移ろうとすると D4 を出す', async () => {
+    const task = makeTask({ id: 3, title: 'API設計書を書く' })
+    installFakeApi({
+      'GET /tasks/counts': () => EMPTY_COUNTS,
+      'GET /tasks?view=no-due': () => ({ status: 200, body: { items: [listItem(task)], hasMore: false } }),
+      'GET /tasks?view=today': () => ({ status: 200, body: { items: [], hasMore: false } }),
+      'GET /tasks/3': () => ({ status: 200, body: { ...task, subtasks: [] } }),
+    })
+    const { router } = renderApp('/no-due?task=3')
+    const user = userEvent.setup()
+
+    const panel = await screen.findByRole('complementary', { name: 'タスク詳細' })
+    await user.type(await within(panel).findByRole('textbox', { name: 'タイトル' }), '!')
+    await user.click(screen.getByRole('link', { name: /^今日/ }))
+
+    const dialog = await screen.findByRole('alertdialog', { name: '変更を破棄しますか？' })
+    expect(router.state.location.pathname).toBe('/no-due')
+    await user.click(within(dialog).getByRole('button', { name: '破棄' }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/today'))
+  })
+
+  test('未保存の変更がある状態でブラウザの戻るを押すと D4 を出し、編集に戻れる', async () => {
+    const task = makeTask({ id: 3, title: 'API設計書を書く' })
+    installFakeApi({
+      'GET /tasks/counts': () => EMPTY_COUNTS,
+      'GET /tasks?view=no-due': () => ({ status: 200, body: { items: [listItem(task)], hasMore: false } }),
+      'GET /tasks/3': () => ({ status: 200, body: { ...task, subtasks: [] } }),
+    })
+    const { router } = renderApp('/no-due')
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: 'API設計書を書く' }))
+    const panel = await screen.findByRole('complementary', { name: 'タスク詳細' })
+    await user.type(await within(panel).findByRole('textbox', { name: 'タイトル' }), '!')
+    await router.navigate(-1)
+
+    const dialog = await screen.findByRole('alertdialog', { name: '変更を破棄しますか？' })
+    await user.click(within(dialog).getByRole('button', { name: '編集に戻る' }))
+    expect(router.state.location.search).toBe('?task=3')
+    expect(within(panel).getByRole('textbox', { name: 'タイトル' })).toHaveValue('API設計書を書く!')
+  })
+
   test('時刻だけの期限は保存できない（日付を空にすると時刻も消える）', async () => {
     const task = makeTask({ id: 3, title: 't', dueDate: '2026-10-20', dueTime: '10:00' })
     const { requests } = installFakeApi({

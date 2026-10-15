@@ -1,9 +1,8 @@
-import { useState } from 'react'
 import { useSearchParams } from 'react-router'
 import type { Rule } from '../api/types.ts'
-import { ConfirmDialog } from '../components/ConfirmDialog.tsx'
 import { RuleEditPanel } from '../components/RuleEditPanel.tsx'
 import { useRules, useSetRuleActive } from '../hooks/useRules.ts'
+import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard.tsx'
 import { formatDate } from '../lib/date.ts'
 import { describePattern } from '../lib/recurrence.ts'
 import { useToast } from '../toast/useToast.ts'
@@ -14,8 +13,8 @@ export function RulesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const ruleParam = searchParams.get('rule')
   const selected: number | 'new' | null = ruleParam === 'new' ? 'new' : Number(ruleParam) || null
-  const [panelDirty, setPanelDirty] = useState(false)
-  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null)
+  // 編集パネルに未保存の変更があれば、パネルの切り替えやページ移動の前に D4 を出す
+  const { setDirty, dialog: discardDialog } = useUnsavedChangesGuard()
 
   const setPanel = (value: number | 'new' | null, replace = false) =>
     setSearchParams(
@@ -30,51 +29,29 @@ export function RulesPage() {
       { replace },
     )
 
-  /** 未保存の変更があれば D4 を出してから実行する */
-  const guard = (action: () => void) => {
-    if (panelDirty) {
-      setPendingAction(() => action)
-    } else {
-      action()
-    }
-  }
-
   return (
     <div className={selected ? styles.withPanel : undefined}>
       <header className={styles.header}>
         <h1 className={styles.title}>繰り返しルール</h1>
-        <button type="button" className={styles.newButton} onClick={() => guard(() => setPanel('new'))}>
+        <button type="button" className={styles.newButton} onClick={() => setPanel('new')}>
           ＋ 新規ルール
         </button>
       </header>
 
-      <RuleList selectedId={typeof selected === 'number' ? selected : null} onOpen={(id) => guard(() => setPanel(id))} />
+      <RuleList selectedId={typeof selected === 'number' ? selected : null} onOpen={(id) => setPanel(id)} />
 
       {selected && (
         <RuleEditPanel
           key={selected}
           ruleId={selected}
-          onClose={() => guard(() => setPanel(null))}
+          onClose={() => setPanel(null)}
           onCreated={(id) => setPanel(id, true)}
           onDeleted={() => setPanel(null)}
-          onDirtyChange={setPanelDirty}
+          onDirtyChange={setDirty}
         />
       )}
 
-      {pendingAction && (
-        <ConfirmDialog
-          message="変更を破棄しますか？"
-          confirmLabel="破棄"
-          cancelLabel="編集に戻る"
-          danger
-          onConfirm={() => {
-            setPanelDirty(false)
-            pendingAction()
-            setPendingAction(null)
-          }}
-          onCancel={() => setPendingAction(null)}
-        />
-      )}
+      {discardDialog}
     </div>
   )
 }
