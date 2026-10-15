@@ -66,7 +66,7 @@ class AutoBackupServiceTest {
     void その日の分を1つだけ保存する() throws Exception {
         Path file = autoBackup.runIfNeeded().orElseThrow();
 
-        assertThat(file.getFileName().toString()).isEqualTo("mytask-manager-auto-20261014.json");
+        assertThat(file.getFileName().toString()).isEqualTo("orbit-auto-20261014.json");
         String json = Files.readString(file);
         assertThat((String) JsonPath.read(json, "$.format")).isEqualTo("mytask-manager-backup");
 
@@ -83,8 +83,8 @@ class AutoBackupServiceTest {
         }
 
         assertThat(fileCount()).isEqualTo(AutoBackupService.KEEP);
-        assertThat(autoBackup.status().files().getFirst().name()).isEqualTo("mytask-manager-auto-20261102.json");
-        assertThat(autoBackup.status().files().getLast().name()).isEqualTo("mytask-manager-auto-20261020.json");
+        assertThat(autoBackup.status().files().getFirst().name()).isEqualTo("orbit-auto-20261102.json");
+        assertThat(autoBackup.status().files().getLast().name()).isEqualTo("orbit-auto-20261020.json");
     }
 
     @Test
@@ -94,8 +94,25 @@ class AutoBackupServiceTest {
         mockMvc.perform(get("/api/backup/auto"))
                 .andExpect(jsonPath("$.directory").value(dir().toString()))
                 .andExpect(jsonPath("$.keep").value(14))
-                .andExpect(jsonPath("$.files[0].name").value("mytask-manager-auto-20261014.json"))
+                .andExpect(jsonPath("$.files[0].name").value("orbit-auto-20261014.json"))
                 .andExpect(jsonPath("$.files[0].createdAt").exists());
+    }
+
+    @Test
+    void 名前を変える前の自動バックアップも件数に含めて古いものから消す() throws Exception {
+        Files.createDirectories(dir());
+        for (int day = 1; day <= 10; day++) {
+            Files.writeString(dir().resolve("mytask-manager-auto-202610%02d.json".formatted(day)), "{}");
+        }
+        for (int day = 0; day < 8; day++) {
+            clock.set(TestClockConfig.NOW.plusDays(day));
+            autoBackup.runIfNeeded();
+        }
+
+        // 新しい名前の 10/14〜10/21 の8件と、旧名の 10/05〜10/10 の6件が残る
+        assertThat(fileCount()).isEqualTo(AutoBackupService.KEEP);
+        assertThat(autoBackup.status().files().getFirst().name()).isEqualTo("orbit-auto-20261021.json");
+        assertThat(autoBackup.status().files().getLast().name()).isEqualTo("mytask-manager-auto-20261005.json");
     }
 
     @Test

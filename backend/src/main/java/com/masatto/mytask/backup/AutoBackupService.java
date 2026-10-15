@@ -34,7 +34,8 @@ public class AutoBackupService {
 
     static final int KEEP = 14;
     private static final DateTimeFormatter FILE_DATE = DateTimeFormatter.ofPattern("yyyyMMdd");
-    private static final Pattern FILE_NAME = Pattern.compile("mytask-manager-auto-\\d{8}\\.json");
+    /** 名前を Orbit に変える前の mytask-manager-auto-*.json も、残す件数の数え方と一覧に含める */
+    private static final Pattern FILE_NAME = Pattern.compile("(orbit|mytask-manager)-auto-\\d{8}\\.json");
 
     private final BackupService backupService;
     private final JsonMapper jsonMapper;
@@ -67,14 +68,14 @@ public class AutoBackupService {
 
     /** 今日の分がまだなければ保存する。失敗してもアプリは止めない（ログに残す） */
     public synchronized Optional<Path> runIfNeeded() {
-        Path file = directory.resolve("mytask-manager-auto-" + LocalDate.now(clock).format(FILE_DATE) + ".json");
+        Path file = directory.resolve("orbit-auto-" + LocalDate.now(clock).format(FILE_DATE) + ".json");
         if (Files.exists(file)) {
             return Optional.empty();
         }
         try {
             Files.createDirectories(directory);
             // 書きかけのファイルが残らないよう、一時ファイルに書いてから置き換える
-            Path temp = Files.createTempFile(directory, "mytask-manager-auto-", ".tmp");
+            Path temp = Files.createTempFile(directory, "orbit-auto-", ".tmp");
             try {
                 jsonMapper.writeValue(temp.toFile(), backupService.export());
                 Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
@@ -110,12 +111,18 @@ public class AutoBackupService {
         try (Stream<Path> stream = Files.list(directory)) {
             return stream
                     .filter(p -> FILE_NAME.matcher(p.getFileName().toString()).matches())
-                    .sorted(Comparator.comparing((Path p) -> p.getFileName().toString()).reversed())
+                    .sorted(Comparator.comparing(AutoBackupService::fileDate).reversed())
                     .toList();
         } catch (IOException e) {
             log.warn("Cannot list auto backups in {}", directory, e);
             return List.of();
         }
+    }
+
+    /** ファイル名の日付部分（旧名と新名が混ざっても日付順に並ぶように） */
+    private static String fileDate(Path file) {
+        String name = file.getFileName().toString();
+        return name.substring(name.length() - "yyyyMMdd.json".length());
     }
 
     private BackupFile toBackupFile(Path file) {

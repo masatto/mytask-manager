@@ -12,7 +12,7 @@ export async function exportBackup(): Promise<{ blob: Blob; filename: string }> 
     throw new ApiRequestError(response.status, 'INTERNAL_ERROR', 'エクスポートに失敗しました')
   }
   const disposition = response.headers.get('Content-Disposition') ?? ''
-  const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? 'mytask-manager-backup.json'
+  const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? 'orbit-backup.json'
   return { blob: await response.blob(), filename }
 }
 

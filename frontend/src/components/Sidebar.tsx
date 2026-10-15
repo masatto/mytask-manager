@@ -30,7 +30,7 @@ export function Sidebar() {
 
   // ブラウザのタブにも「今日」の件数を出す（ほかのタブで作業中でも気づけるように）
   useEffect(() => {
-    document.title = counts && counts.today > 0 ? `(${counts.today}) mytask-manager` : 'mytask-manager'
+    document.title = counts && counts.today > 0 ? `(${counts.today}) Orbit` : 'Orbit'
   }, [counts])
 
   return (

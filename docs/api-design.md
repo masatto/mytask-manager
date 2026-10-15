@@ -350,7 +350,7 @@ TaskResponse に次の項目を加えて返す。
 
 ```json
 {
-  "directory": "C:\Users\me\.mytask-manager\backups",
+  "directory": "C:\\Users\\me\\.mytask-manager\\backups",
   "keep": 14,
   "files": [ { "name": "mytask-manager-auto-20261015.json", "size": 4096, "createdAt": "2026-10-15T00:05:00+09:00" } ]
 }
@@ -359,7 +359,7 @@ TaskResponse に次の項目を加えて返す。
 - 保存処理はアプリ起動時と毎日0:05に実行する。その日のファイル（`mytask-manager-auto-YYYYMMDD.json`）が既にあれば何もしない
 - 内容は 6.1 と同じ形式。一時ファイルに書いてから置き換えるので、書きかけのファイルは残らない
 - 自動バックアップのファイル名に合うものだけを数え、新しい順に14件を残して古いものを削除する（フォルダー内のほかのファイルには触れない）
-- 保存先は `mytask.backup-dir`（初期値 `%USERPROFILE%.mytask-managerackups`）
+- 保存先は `mytask.backup-dir`（初期値 `%USERPROFILE%\.mytask-manager\backups`）
 
 ## 7. 決定事項
 

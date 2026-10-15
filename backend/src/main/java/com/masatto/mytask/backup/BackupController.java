@@ -33,7 +33,7 @@ public class BackupController {
     @GetMapping
     public ResponseEntity<BackupDocument> export() {
         BackupDocument doc = backupService.export();
-        String filename = "mytask-manager-" + doc.exportedAt().format(FILE_TIMESTAMP) + ".json";
+        String filename = "orbit-" + doc.exportedAt().format(FILE_TIMESTAMP) + ".json";
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(filename).build().toString())
                 .body(doc);

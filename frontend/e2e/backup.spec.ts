@@ -13,7 +13,7 @@ test('エクスポートしたファイルをインポートすると、その�
     page.waitForEvent('download'),
     page.getByRole('button', { name: 'JSONをエクスポート' }).click(),
   ])
-  expect(download.suggestedFilename()).toMatch(/^mytask-manager-\d{8}-\d{4}\.json$/)
+  expect(download.suggestedFilename()).toMatch(/^orbit-\d{8}-\d{4}\.json$/)
   const file = testInfo.outputPath('backup.json')
   await download.saveAs(file)
   await expect(page.getByText(/最終エクスポート：\d+\/\d+ \d\d:\d\d/)).toBeVisible()

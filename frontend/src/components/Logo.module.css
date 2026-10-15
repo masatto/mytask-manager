@@ -9,32 +9,19 @@
   text-decoration: none;
 }
 
-.logo:hover svg {
-  transform: rotate(-6deg) scale(1.05);
-}
-
 .logo svg {
   flex: none;
-  transition: transform 0.2s ease;
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* マウスを乗せると、軌道が少し回る */
+.logo:hover svg {
+  transform: rotate(-24deg);
 }
 
 .wordmark {
-  display: flex;
-  align-items: baseline;
-  font-size: 18px;
-  /* グラデーション文字は行の高さで切り取られるので、g の下が欠けない高さにする */
-  line-height: 1.35;
-  letter-spacing: -0.02em;
-}
-
-.strong {
+  font-size: 22px;
   font-weight: 800;
-}
-
-.light {
-  margin-left: 1px;
-  background: linear-gradient(90deg, #3b82f6, #7c3aed);
-  background-clip: text;
-  color: transparent;
-  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.03em;
 }

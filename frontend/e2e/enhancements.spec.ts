@@ -4,13 +4,13 @@ import { quickAdd, taskPanel, unique } from './helpers.ts'
 test('ショートカットで追加し、検索で見つけ、明日に延期して元に戻す', async ({ page }) => {
   const title = unique('請求書を送る')
   await page.goto('/today')
-  await expect(page).toHaveTitle(/mytask-manager/)
+  await expect(page).toHaveTitle(/Orbit/)
 
   // N でクイック追加へ
   await page.keyboard.press('n')
   await expect(page.getByRole('textbox', { name: 'タスクを追加' })).toBeFocused()
   await quickAdd(page, title)
-  await expect(page).toHaveTitle(/^\(\d+\) mytask-manager$/)
+  await expect(page).toHaveTitle(/^\(\d+\) Orbit$/)
 
   // 明日へ延期 → 今日ビューから消える → 元に戻す
   const row = page.locator('li', { has: page.getByRole('button', { name: title, exact: true }) })
@@ -40,5 +40,5 @@ test('ショートカットで追加し、検索で見つけ、明日に延期�
 test('設定画面に自動バックアップが表示される（起動時に保存される）', async ({ page }) => {
   await page.goto('/settings')
   const section = page.getByRole('region', { name: '自動バックアップ' })
-  await expect(section.getByRole('list', { name: '保存済みの自動バックアップ' })).toContainText(/mytask-manager-auto-\d{8}\.json/)
+  await expect(section.getByRole('list', { name: '保存済みの自動バックアップ' })).toContainText(/orbit-auto-\d{8}\.json/)
 })

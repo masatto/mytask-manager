@@ -152,7 +152,7 @@ test('ブラウザのタブに今日の件数を出す', async () => {
   })
   renderApp('/today')
 
-  await waitFor(() => expect(document.title).toBe('(3) mytask-manager'))
+  await waitFor(() => expect(document.title).toBe('(3) Orbit'))
 })
 
 test('設定画面に自動バックアップの保存先と保存済みファイルを出す', async () => {
