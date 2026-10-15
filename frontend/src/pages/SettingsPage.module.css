@@ -144,3 +144,65 @@
   margin: 0;
   min-width: 0;
 }
+
+.ok {
+  margin: 8px 0 0;
+  color: #1a7f37;
+  font-size: 13px;
+}
+
+.note {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--color-sidebar);
+  color: var(--color-text-sub);
+  font-size: 11px;
+  line-height: 18px;
+}
+
+/* 保存場所の一覧 */
+.storage {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+}
+
+.storageRow {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.storageRow dt {
+  padding-top: 3px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.storageRow dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.storagePath {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.storageNote {
+  margin: 4px 0 0;
+  color: var(--color-text-sub);
+  font-size: 12.5px;
+}
+
+.storagePath .smallButton {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.storagePath .path {
+  overflow-wrap: anywhere;
+}

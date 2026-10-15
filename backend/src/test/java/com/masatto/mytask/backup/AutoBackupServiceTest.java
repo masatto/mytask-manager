@@ -172,7 +172,8 @@ class AutoBackupServiceTest {
                 .content("{\"mirrorDirectory\":" + jsonString(mirrorDir().toString()) + "}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mirrorDirectory").value(mirrorDir().toString()))
-                .andExpect(jsonPath("$.mirrorError").doesNotExist());
+                .andExpect(jsonPath("$.mirrorError").doesNotExist())
+                .andExpect(jsonPath("$.mirrorFiles[0].name").value("orbit-auto-20261014.json"));
         assertThat(mirrorDir().resolve("orbit-auto-20261014.json")).exists();
 
         clock.set(TestClockConfig.NOW.plusDays(1));

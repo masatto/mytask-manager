@@ -31,6 +31,8 @@ export type AutoBackupStatus = {
   mirrorDirectory: string | null
   /** 直近のコピーの失敗理由。成功していれば null */
   mirrorError: string | null
+  /** コピー先にある自動バックアップ（新しい順） */
+  mirrorFiles: { name: string; size: number; createdAt: string | null }[]
 }
 
 /** 自動バックアップのコピー先を設定する（null で解除） */

@@ -386,15 +386,17 @@ TaskResponse に次の項目を加えて返す。
 | PUT | `/backup/auto/mirror` | `{ "mirrorDirectory": "C:\\Users\\me\\OneDrive\\Orbit" }`（null・空で解除）。存在して書き込める絶対パスのフォルダーで、保存先とは別であること（違えば 400 `VALIDATION_ERROR`、field は `mirrorDirectory`）。設定するとすぐに今あるバックアップを写す。返すのは 6.3 の状態 |
 | POST | `/backup/auto/run` | 今日の自動バックアップを今の内容で作り直し、コピー先にも写す。返すのは 6.3 の状態 |
 
-- 6.3 の状態に `mirrorDirectory`（未設定なら null）と `mirrorError`（直近のコピーの失敗理由。成功なら null）を加える
+- 6.3 の状態に `mirrorDirectory`（未設定なら null）と `mirrorError`（直近のコピーの失敗理由。成功なら null）、`mirrorFiles`（コピー先にある自動バックアップ。形は `files` と同じ・新しい順。未設定なら空）を加える
 - コピー先にも、自動バックアップのファイル名に合うものだけを新しい順に14件残す。コピーに失敗しても、バックアップ自体（保存先への保存）は成功として扱う
 - 設定は DB の外（`mytask.settings-file`、初期値は `データの保存先\settings.json`）に置く。DB を復元しても設定が巻き戻らないようにするため
 
 ### 6.6 GET `/system`（このアプリについて）
 
 ```json
-{ "version": "1.0.0", "buildTime": "2026-10-15T16:53:16+09:00", "dataDirectory": "C:\\Users\\me\\.mytask-manager\\data", "backupDirectory": "C:\\Users\\me\\.mytask-manager\\backups" }
+{ "version": "1.0.0", "buildTime": "2026-10-15T16:53:16+09:00", "dataDirectory": "C:\\Users\\me\\.mytask-manager\\data", "backupDirectory": "C:\\Users\\me\\.mytask-manager\\backups", "logFile": "C:\\Users\\me\\.mytask-manager\\logs\\orbit.log" }
 ```
+
+- `logFile` はログを書き出しているファイル（`logging.file.name`）。ファイルに残さない起動（開発用）では null
 
 - `buildTime` は実際にビルドした日時（古いアプリが動いたままになっていないかの確認用）
 

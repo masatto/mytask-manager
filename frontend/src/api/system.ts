@@ -5,6 +5,8 @@ export type SystemInfo = {
   buildTime: string | null
   dataDirectory: string
   backupDirectory: string
+  /** ログファイル。開発用の起動では null */
+  logFile: string | null
 }
 
 /** 動いているアプリのバージョン・ビルド日時と、データの保存先 */
