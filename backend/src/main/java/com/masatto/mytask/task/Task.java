@@ -68,6 +68,10 @@ public class Task {
 
     private LocalDate occurrenceDate;
 
+    /** エリア（null は未分類）。サブタスクは親と同じ値を持つ */
+    @Setter
+    private Long areaId;
+
     @Column(nullable = false)
     private Instant createdAt;
 

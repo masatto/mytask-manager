@@ -30,3 +30,7 @@
   font-size: 14px;
   font-variant-numeric: tabular-nums;
 }
+
+.area {
+  align-self: center;
+}

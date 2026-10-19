@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -40,8 +41,8 @@ public class RuleController {
     }
 
     @GetMapping
-    public RuleListResponse list() {
-        return new RuleListResponse(ruleService.list());
+    public RuleListResponse list(@RequestParam(required = false) Long area) {
+        return new RuleListResponse(ruleService.list(area));
     }
 
     @GetMapping("/{id}")

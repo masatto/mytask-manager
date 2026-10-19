@@ -1,4 +1,4 @@
-# mytask-manager DB設計 v1.1
+# mytask-manager DB設計 v1.2
 
 [requirements.md](requirements.md) v1.1 と [api-design.md](api-design.md) v1.0 に基づく。
 
@@ -66,6 +66,7 @@ recurrence_rules 1 ──── 0..* rule_subtask_templates
 | `ix_tasks_status_due` | `(status, due_date)` | 今日・今後・期限なしビュー |
 | `ix_tasks_completed_at` | `(completed_at)` | 完了済みビュー |
 | `ix_tasks_parent` | `(parent_id)` | サブタスクの取得 |
+| `ix_tasks_area` | `(area_id)` | エリアの付け替え・件数 |
 
 ### 3.2 recurrence_rules
 
@@ -108,6 +109,20 @@ recurrence_rules 1 ──── 0..* rule_subtask_templates
 - 制約：`UNIQUE (rule_id, position)`
 - ルールを更新するときは、ひな形を全件削除してから入れ直す（JPA では `orphanRemoval = true` を使う）
 
+### 3.5 areas（V2 で追加）
+
+| 列 | 型 | NULL | 説明 |
+|---|---|---|---|
+| `id` | BIGINT IDENTITY | × | 主キー |
+| `name` | VARCHAR(20) | × | 同じ名前（大文字小文字を区別しない）はアプリで禁止 |
+| `color` | VARCHAR(10) | × | `blue` / `green` / `purple` / `orange` / `teal` / `pink` / `brown` / `gray`（`ck_areas_color`） |
+| `position` | INTEGER | × | タブの並び順 |
+| `created_at` / `updated_at` | TIMESTAMP WITH TIME ZONE | × | |
+
+- `tasks.area_id` と `recurrence_rules.area_id`（どちらも NULL は未分類）が参照する。外部キーは `ON DELETE SET NULL`。エリアの削除ではアプリが先に移動先へ付け替えるので、これは最後の防止策
+- サブタスクの `area_id` は親と同じ値を持つ。一覧の絞り込みをタスク1件ずつの判定で済ませ、親子が別々に絞り込まれないようにするため（親を移すとサブタスクも一緒に更新する）
+- 初期データとして Project（青）と Internal（緑）を入れる
+
 ### 3.4 サブタスクの入れ子をDBで禁止する仕組み
 
 - サブタスクの行は、`(parent_id, parent_level)` = `(親のID, 0)` で親を参照する
@@ -143,3 +158,4 @@ recurrence_rules 1 ──── 0..* rule_subtask_templates
 |---|---|---|
 | 2026-10-14 | 1.0 | 初版 |
 | 2026-10-15 | 1.1 | Phase 2 の実装に合わせて、`Task` の親を関連ではなく `parentId` で持つ形に変更 |
+| 2026-10-19 | 1.2 | エリア（3.5 `areas`、`tasks.area_id`、`recurrence_rules.area_id`）を追加 |

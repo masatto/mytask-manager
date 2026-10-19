@@ -21,6 +21,7 @@ public record RuleRequest(
         @NotNull(message = "開始日は必須です") LocalDate startDate,
         LocalDate endDate,
         Boolean active,
+        Long areaId,
         @Size(max = 20, message = "サブタスクのひな形は20件までです") List<@Valid Template> subtaskTemplates) {
 
     public record Template(

@@ -133,3 +133,9 @@
   background: var(--color-bg);
   cursor: pointer;
 }
+
+.titleCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

@@ -16,6 +16,7 @@ function item(overrides: Partial<TaskListItem> & { completedAt?: string; title?:
     overdue: overrides.viewOverdue ?? false,
     parentId: null,
     recurrence: null,
+    areaId: null,
     createdAt: '2026-10-01T00:00:00+09:00',
     updatedAt: '2026-10-01T00:00:00+09:00',
   }

@@ -11,6 +11,7 @@ import { addDays, nextMonday, parseDateKey, toDateKey } from './date.ts'
  *   10/20・10月20日（過ぎていれば翌年）/ 2026-12-01・2026/12/1
  * - 時刻：15:00 / 9時 / 9時半 / 9時15分
  * - 優先度：!高 / !中 / !低（!h !m !l も可）
+ * - エリア：@Internal（エリア名。大文字小文字は区別せず、名前の先頭だけでも1つに決まれば可）
  *
  * 全角の数字・記号（１５：００、！高）も、一致の判定では半角として扱う。
  */
@@ -20,7 +21,11 @@ export type ParsedQuickAdd = {
   dueDate: string | undefined
   dueTime: string | undefined
   priority: Priority | undefined
+  /** @ で指定したエリア */
+  areaId: number | undefined
 }
+
+type AreaName = { id: number; name: string }
 
 const WEEKDAY_INDEX: Record<string, number> = { 日: 0, 月: 1, 火: 2, 水: 3, 木: 4, 金: 5, 土: 6 }
 
@@ -112,8 +117,29 @@ function parsePriority(word: string): Priority | null {
   return m ? (PRIORITY_WORDS[m[1].toLowerCase()] ?? null) : null
 }
 
-export function parseQuickAdd(input: string, today: string): ParsedQuickAdd {
-  const result: ParsedQuickAdd = { title: '', dueDate: undefined, dueTime: undefined, priority: undefined }
+/** @名前 のエリア。完全に一致するもの、なければ先頭が一致して1つに決まるもの */
+function parseArea(word: string, areas: AreaName[]): number | null {
+  const m = /^@(.+)$/.exec(word)
+  if (!m) {
+    return null
+  }
+  const query = m[1].toLowerCase()
+  const exact = areas.find((a) => a.name.normalize('NFKC').toLowerCase() === query)
+  if (exact) {
+    return exact.id
+  }
+  const prefixed = areas.filter((a) => a.name.normalize('NFKC').toLowerCase().startsWith(query))
+  return prefixed.length === 1 ? prefixed[0].id : null
+}
+
+export function parseQuickAdd(input: string, today: string, areas: AreaName[] = []): ParsedQuickAdd {
+  const result: ParsedQuickAdd = {
+    title: '',
+    dueDate: undefined,
+    dueTime: undefined,
+    priority: undefined,
+    areaId: undefined,
+  }
   const titleWords: string[] = []
 
   for (const word of input.split(/[\s　]+/).filter(Boolean)) {
@@ -136,6 +162,13 @@ export function parseQuickAdd(input: string, today: string): ParsedQuickAdd {
       const priority = parsePriority(normalized)
       if (priority) {
         result.priority = priority
+        continue
+      }
+    }
+    if (result.areaId === undefined) {
+      const areaId = parseArea(normalized, areas)
+      if (areaId !== null) {
+        result.areaId = areaId
         continue
       }
     }

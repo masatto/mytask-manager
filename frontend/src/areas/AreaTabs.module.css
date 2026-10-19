@@ -1,0 +1,47 @@
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin: 0 0 8px;
+  padding: 3px;
+  border-radius: 8px;
+  background: #e9ebef;
+}
+
+.tab {
+  display: inline-flex;
+  flex: 1 1 auto;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  /* 1行に2つ以上は並ぶように、名前が長くても広がりすぎない */
+  max-width: 100%;
+  min-width: 0;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-sub);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--color-text);
+}
+
+.on,
+.on:hover {
+  background: #fff;
+  color: var(--color-text);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 12%);
+}
+
+.name {
+  overflow: hidden;
+  max-width: 7.5em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

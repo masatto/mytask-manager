@@ -13,6 +13,9 @@ import {
   type TaskStatus,
   type TaskUpdateInput,
 } from '../api/types.ts'
+import { useAreas } from '../areas/useAreas.ts'
+import { AreaRadioGroup } from '../areas/AreaRadioGroup.tsx'
+import { fromAreaField, toAreaField } from '../areas/areaField.ts'
 import { isChecked, useToggleComplete } from '../hooks/useToggleComplete.tsx'
 import { useDeleteTask, useDuplicateTask, useUpdateTask } from '../hooks/useTasks.ts'
 import { addDays, formatDate, formatDateTime, nextMonday, todayKey } from '../lib/date.ts'
@@ -34,6 +37,8 @@ const schema = z
     dueTime: z.string().optional(),
     priority: z.enum(PRIORITIES),
     status: z.enum(STATUSES),
+    /** '' は未分類 */
+    areaId: z.string(),
   })
   .refine((v) => !v.dueTime || v.dueDate !== '', {
     path: ['dueTime'],
@@ -57,6 +62,7 @@ function toFormValues(task: TaskDetail): FormValues {
     dueTime: task.dueTime ?? '',
     priority: task.priority,
     status: task.status,
+    areaId: toAreaField(task.areaId),
   }
 }
 
@@ -68,6 +74,7 @@ function toUpdateInput(values: FormOutput): TaskUpdateInput {
     dueTime: values.dueDate && values.dueTime ? values.dueTime : null,
     priority: values.priority,
     status: values.status,
+    areaId: fromAreaField(values.areaId),
   }
 }
 
@@ -111,6 +118,7 @@ export function TaskEditForm({
   const [confirmingComplete, setConfirmingComplete] = useState<FormOutput | null>(null)
 
   const subtasks = task.subtasks ?? []
+  const { areas } = useAreas()
   const incompleteSubtasks = subtasks.filter((s) => s.status !== 'DONE').length
 
   useEffect(() => {
@@ -244,6 +252,17 @@ export function TaskEditForm({
       {errors.title && <p className={styles.fieldError}>{errors.title.message}</p>}
 
       <dl className={styles.fields}>
+        {/* サブタスクは親と同じエリアに入るので、親のときだけ選べる */}
+        {!task.parent && areas.length > 0 && (
+          <>
+            <dt>エリア</dt>
+            <dd>
+              <AreaRadioGroup registration={register('areaId')} />
+              {errors.areaId && <p className={styles.fieldError}>{errors.areaId.message}</p>}
+            </dd>
+          </>
+        )}
+
         <dt>
           <label htmlFor="task-status">ステータス</label>
         </dt>

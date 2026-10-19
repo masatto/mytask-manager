@@ -30,6 +30,7 @@ public record TaskResponse(
         boolean overdue,
         Long parentId,
         Recurrence recurrence,
+        Long areaId,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
         @JsonInclude(JsonInclude.Include.NON_NULL) ParentSummary parent,
@@ -60,6 +61,7 @@ public record TaskResponse(
                         : new Recurrence(task.getRecurrenceRuleId(),
                                 task.getRecurrenceRuleId() == null ? null : ruleTitles.get(task.getRecurrenceRuleId()),
                                 task.getOccurrenceDate()),
+                task.getAreaId(),
                 task.getCreatedAt().atZone(zone).toOffsetDateTime(),
                 task.getUpdatedAt().atZone(zone).toOffsetDateTime(),
                 null,
@@ -68,6 +70,6 @@ public record TaskResponse(
 
     public TaskResponse withDetail(ParentSummary parent, List<TaskResponse> subtasks) {
         return new TaskResponse(id, title, memo, dueDate, dueTime, priority, status, completedAt, overdue,
-                parentId, recurrence, createdAt, updatedAt, parent, subtasks);
+                parentId, recurrence, areaId, createdAt, updatedAt, parent, subtasks);
     }
 }

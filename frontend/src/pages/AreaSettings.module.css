@@ -1,0 +1,111 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--color-border);
+}
+
+.item {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.nameInput {
+  width: 200px;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 14px;
+}
+
+.color {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.select {
+  padding: 4px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  font: inherit;
+  font-size: 13px;
+}
+
+.count {
+  color: var(--color-text-sub);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.actions {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.iconButton,
+.deleteButton,
+.primary {
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.iconButton:hover:not(:disabled),
+.deleteButton:hover {
+  background: var(--color-hover);
+}
+
+.iconButton:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.deleteButton {
+  color: var(--color-danger);
+}
+
+.primary {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.primary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.add {
+  margin-top: 4px;
+}
+
+.error {
+  margin: 6px 0 0;
+  color: var(--color-danger);
+  font-size: 12px;
+}
+
+.moveTo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+  font-size: 13px;
+}

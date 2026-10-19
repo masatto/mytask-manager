@@ -21,6 +21,7 @@ public record RuleResponse(
         LocalDate startDate,
         LocalDate endDate,
         boolean active,
+        Long areaId,
         List<RuleRequest.Template> subtaskTemplates,
         LocalDate nextOccurrence,
         LocalDate lastGeneratedDate,
@@ -38,6 +39,7 @@ public record RuleResponse(
                 rule.getStartDate(),
                 rule.getEndDate(),
                 rule.isActive(),
+                rule.getAreaId(),
                 rule.getSubtaskTemplates().stream()
                         .map(t -> new RuleRequest.Template(t.getTitle(), t.getPriority()))
                         .toList(),

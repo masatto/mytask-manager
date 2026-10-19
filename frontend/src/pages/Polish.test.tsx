@@ -95,7 +95,7 @@ describe('詳細パネル', () => {
     await waitFor(() => expect(router.state.location.search).toBe('?task=10'))
     expect(screen.getByText('複製しました')).toBeInTheDocument()
     expect(requests.filter((r) => r.method === 'POST').map((r) => r.body)).toEqual([
-      { title: 'API設計書（コピー）', memo: task.memo, dueDate: today, dueTime: '10:00', priority: 'HIGH' },
+      { title: 'API設計書（コピー）', memo: task.memo, dueDate: today, dueTime: '10:00', priority: 'HIGH', areaId: null },
       { title: '一覧API', memo: null, dueDate: null, dueTime: null, priority: 'LOW', parentId: 10 },
     ])
   })

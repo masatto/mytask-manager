@@ -11,10 +11,13 @@ import {
   type RulePreviewInput,
 } from '../api/rules.ts'
 import { taskKeys } from '../api/tasks.ts'
+import { useAreas } from '../areas/useAreas.ts'
 import type { RuleInput } from '../api/types.ts'
 
+/** 選んでいるエリアの繰り返しルール */
 export function useRules() {
-  return useQuery({ queryKey: ruleKeys.list(), queryFn: fetchRules })
+  const { areaId } = useAreas()
+  return useQuery({ queryKey: ruleKeys.list(areaId), queryFn: () => fetchRules(areaId) })
 }
 
 export function useRule(id: number) {

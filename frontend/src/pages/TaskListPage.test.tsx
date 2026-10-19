@@ -65,7 +65,7 @@ describe('TaskListPage', () => {
     await user.type(input, '  新しいタスク  {Enter}')
 
     await waitFor(() => expect(input).toHaveValue(''))
-    expect(requests.find((r) => r.method === 'POST')?.body).toEqual({ title: '新しいタスク', dueDate: today })
+    expect(requests.find((r) => r.method === 'POST')?.body).toEqual({ title: '新しいタスク', dueDate: today, areaId: null })
     expect(input).toHaveFocus()
   })
 
@@ -130,6 +130,7 @@ describe('TaskListPage', () => {
       dueTime: null,
       priority: 'HIGH',
       status: 'TODO',
+      areaId: null,
     })
   })
 

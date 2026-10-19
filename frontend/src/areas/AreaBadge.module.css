@@ -1,0 +1,74 @@
+/* エリアの色（文字・点と背景）。期限切れの赤と紛れないよう、赤は使わない */
+.blue {
+  --area-fg: #2f6fde;
+  --area-bg: #e6eefc;
+}
+.green {
+  --area-fg: #1a7f37;
+  --area-bg: #e3f4e8;
+}
+.purple {
+  --area-fg: #8250df;
+  --area-bg: #f0e9fc;
+}
+.orange {
+  --area-fg: #bc4c00;
+  --area-bg: #fdeee0;
+}
+.teal {
+  --area-fg: #0b7a75;
+  --area-bg: #dff4f2;
+}
+.pink {
+  --area-fg: #bf3989;
+  --area-bg: #fbe8f3;
+}
+.brown {
+  --area-fg: #8a5a2b;
+  --area-bg: #f3ebe2;
+}
+.gray {
+  --area-fg: #59636e;
+  --area-bg: #eceef1;
+}
+
+.dot {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--area-fg);
+}
+
+.badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  max-width: 120px;
+  padding: 0 7px;
+  border-radius: 9px;
+  background: var(--area-bg);
+  color: var(--area-fg);
+  font-size: 11px;
+  line-height: 18px;
+}
+
+.wide {
+  max-width: 280px;
+}
+
+.badgeDot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--area-fg);
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

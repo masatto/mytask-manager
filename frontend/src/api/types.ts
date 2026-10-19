@@ -15,6 +15,8 @@ export type Task = {
   overdue: boolean
   parentId: number | null
   recurrence: { ruleId: number | null; ruleTitle: string | null; occurrenceDate: string } | null
+  /** エリア（null は未分類）。サブタスクは親と同じ */
+  areaId: number | null
   createdAt: string
   updatedAt: string
 }
@@ -62,6 +64,8 @@ export type TaskCreateInput = {
   dueTime?: string | null
   priority?: Priority
   parentId?: number
+  /** サブタスクでは使わない（親のエリアに入る） */
+  areaId?: number | null
 }
 
 export type TaskUpdateInput = {
@@ -71,6 +75,8 @@ export type TaskUpdateInput = {
   dueTime: string | null
   priority: Priority
   status: TaskStatus
+  /** 全項目を送るので、変えないときも今の値を入れる（サブタスクでは使わない） */
+  areaId: number | null
 }
 
 export const PRIORITY_LABELS: Record<Priority, string> = {
@@ -109,6 +115,8 @@ export type RuleInput = {
   endDate: string | null
   active: boolean
   subtaskTemplates: SubtaskTemplate[]
+  /** 生成するタスクのエリア（null は未分類） */
+  areaId: number | null
 }
 
 export type Rule = RuleInput & {

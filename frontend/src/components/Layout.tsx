@@ -1,4 +1,5 @@
 import { Outlet, useLocation } from 'react-router'
+import { AreaProvider } from '../areas/AreaContext.tsx'
 import { useDayChange } from '../hooks/useDayChange.ts'
 import { useGlobalShortcuts } from '../hooks/useGlobalShortcuts.ts'
 import { ErrorBoundary } from './ErrorBoundary.tsx'
@@ -12,16 +13,18 @@ export function Layout() {
   const { pathname } = useLocation()
 
   return (
-    <div className={styles.layout}>
-      <Sidebar />
-      <main className={styles.main}>
-        {/* ページを移ればエラー表示を解除する */}
-        <ErrorBoundary key={pathname}>
-          <div key={day} className={styles.page}>
-            <Outlet />
-          </div>
-        </ErrorBoundary>
-      </main>
-    </div>
+    <AreaProvider>
+      <div className={styles.layout}>
+        <Sidebar />
+        <main className={styles.main}>
+          {/* ページを移ればエラー表示を解除する */}
+          <ErrorBoundary key={pathname}>
+            <div key={day} className={styles.page}>
+              <Outlet />
+            </div>
+          </ErrorBoundary>
+        </main>
+      </div>
+    </AreaProvider>
   )
 }

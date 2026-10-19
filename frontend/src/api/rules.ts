@@ -1,9 +1,10 @@
+import { areaParam } from './areas.ts'
 import { apiFetch } from './client.ts'
 import type { Pattern, Rule, RuleInput } from './types.ts'
 
 export const ruleKeys = {
   all: ['rules'] as const,
-  list: () => ['rules', 'list'] as const,
+  list: (areaId: number | null) => ['rules', 'list', areaId] as const,
   detail: (id: number) => ['rules', 'detail', id] as const,
   preview: (input: RulePreviewInput) => ['rules', 'preview', input] as const,
 }
@@ -14,8 +15,9 @@ export type RulePreviewInput = {
   endDate: string | null
 }
 
-export function fetchRules(): Promise<{ items: Rule[] }> {
-  return apiFetch('/rules')
+export function fetchRules(areaId: number | null): Promise<{ items: Rule[] }> {
+  const params = new URLSearchParams(areaParam(areaId))
+  return apiFetch(params.size > 0 ? `/rules?${params}` : '/rules')
 }
 
 export function fetchRule(id: number): Promise<Rule> {

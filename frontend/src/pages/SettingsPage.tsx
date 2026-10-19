@@ -17,6 +17,7 @@ import { PageTitle } from '../components/PageTitle.tsx'
 import { formatDateTime } from '../lib/date.ts'
 import { useToast } from '../toast/useToast.ts'
 import { PAGE_TITLES } from '../views.ts'
+import { AreaSettings } from './AreaSettings.tsx'
 import styles from './SettingsPage.module.css'
 
 /** 最終エクスポート日時はこのブラウザにだけ保存する目安（screen-design 7章） */
@@ -132,7 +133,9 @@ export function SettingsPage() {
 
   return (
     <section>
-      <PageTitle {...PAGE_TITLES.settings} />
+      <PageTitle {...PAGE_TITLES.settings} showArea={false} />
+
+      <AreaSettings />
 
       <StorageSection />
 

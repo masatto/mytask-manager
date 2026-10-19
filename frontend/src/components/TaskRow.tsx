@@ -1,4 +1,6 @@
 import type { Task } from '../api/types.ts'
+import { AreaBadge } from '../areas/AreaBadge.tsx'
+import { useAreas } from '../areas/useAreas.ts'
 import { formatDate, formatTime } from '../lib/date.ts'
 import { PriorityMark } from './PriorityMark.tsx'
 import styles from './TaskRow.module.css'
@@ -49,6 +51,9 @@ export function TaskRow({
   onToggleExpand,
   onPostpone,
 }: TaskRowProps) {
+  // 絞り込んでいるときは全部同じエリアなので出さない。サブタスクは親と同じなので出さない
+  const { areas, areaId } = useAreas()
+  const area = areaId === null && !isSubtask ? areas.find((a) => a.id === task.areaId) : undefined
   const due = showCompletedTime
     ? task.completedAt && !contextOnly
       ? `完了 ${formatTime(task.completedAt)}`
@@ -90,6 +95,7 @@ export function TaskRow({
       <PriorityMark priority={task.priority} />
       {/* 左：タイトルと、そのタスクの状態（進行中・サブタスクの進み具合） */}
       <div className={styles.main}>
+        {area && <AreaBadge area={area} />}
         <button
           type="button"
           className={checked ? `${styles.title} ${styles.done}` : styles.title}

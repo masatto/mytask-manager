@@ -109,7 +109,7 @@ class BackupApiTest {
                 .andExpect(header().string("Content-Disposition",
                         containsString("attachment; filename=\"orbit-20261014-1000.json\"")))
                 .andExpect(jsonPath("$.format").value("mytask-manager-backup"))
-                .andExpect(jsonPath("$.version").value(1))
+                .andExpect(jsonPath("$.version").value(2))
                 .andExpect(jsonPath("$.exportedAt").value("2026-10-14T10:00:00+09:00"))
                 // 親・サブタスク2件・ルールから生成された親・そのサブタスク2件
                 .andExpect(jsonPath("$.tasks", hasSize(6)))
@@ -218,7 +218,7 @@ class BackupApiTest {
         @Test
         void 形式やバージョンが違う() throws Exception {
             assertRejected("{\"format\":\"other\",\"version\":1,\"tasks\":[],\"rules\":[]}", "形式バージョン");
-            assertRejected("{\"format\":\"mytask-manager-backup\",\"version\":2,\"tasks\":[],\"rules\":[]}", "形式バージョン");
+            assertRejected("{\"format\":\"mytask-manager-backup\",\"version\":3,\"tasks\":[],\"rules\":[]}", "形式バージョン");
         }
 
         @Test

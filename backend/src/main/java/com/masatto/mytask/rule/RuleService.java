@@ -8,6 +8,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.masatto.mytask.area.AreaService;
 import com.masatto.mytask.common.ApiException;
 import com.masatto.mytask.rule.dto.PatternDto;
 import com.masatto.mytask.rule.dto.RulePreviewRequest;
@@ -25,10 +26,15 @@ public class RuleService {
 
     private final RecurrenceRuleRepository ruleRepository;
     private final RecurrenceGenerator generator;
+    private final AreaService areaService;
     private final Clock clock;
 
-    public List<RuleResponse> list() {
-        return ruleRepository.findAllByOrderByIdAsc().stream().map(this::toResponse).toList();
+    /** @param areaId 指定するとそのエリアのルールだけにする（null ならすべて） */
+    public List<RuleResponse> list(Long areaId) {
+        return ruleRepository.findAllByOrderByIdAsc().stream()
+                .filter(r -> areaId == null || areaId.equals(r.getAreaId()))
+                .map(this::toResponse)
+                .toList();
     }
 
     public RuleResponse get(Long id) {
@@ -77,6 +83,7 @@ public class RuleService {
     }
 
     private void apply(RecurrenceRule rule, RuleRequest request) {
+        areaService.checkExists(request.areaId(), "areaId");
         RecurrencePattern pattern = toPattern(request.pattern(), request.startDate(), request.endDate());
         List<RecurrenceRule.TemplateSpec> templates = request.subtaskTemplates() == null ? List.of()
                 : request.subtaskTemplates().stream()
@@ -90,6 +97,7 @@ public class RuleService {
                 pattern,
                 request.active() == null || request.active(),
                 templates,
+                request.areaId(),
                 Instant.now(clock));
     }
 

@@ -85,3 +85,23 @@ describe('parseQuickAdd', () => {
     expect(parse('t !急ぎ')).toMatchObject({ title: 't !急ぎ', priority: undefined })
   })
 })
+
+describe('エリアの指定', () => {
+  const AREAS = [
+    { id: 1, name: 'Project' },
+    { id: 2, name: 'Internal' },
+    { id: 3, name: 'Interview' },
+  ]
+
+  test('@名前 でエリアを読み取る。大文字小文字は区別せず、先頭だけでも1つに決まれば可', () => {
+    expect(parseQuickAdd('勤怠 @internal 明日', TODAY, AREAS)).toMatchObject({ title: '勤怠', areaId: 2 })
+    expect(parseQuickAdd('レビュー @pro', TODAY, AREAS)).toMatchObject({ title: 'レビュー', areaId: 1 })
+    expect(parseQuickAdd('面談 ＠Interview', TODAY, AREAS)).toMatchObject({ title: '面談', areaId: 3 })
+  })
+
+  test('決まらない・ないエリアはタイトルに残す', () => {
+    expect(parseQuickAdd('調整 @inter', TODAY, AREAS)).toMatchObject({ title: '調整 @inter', areaId: undefined })
+    expect(parseQuickAdd('連絡 @someone', TODAY, AREAS)).toMatchObject({ title: '連絡 @someone', areaId: undefined })
+    expect(parseQuickAdd('連絡 @Project', TODAY)).toMatchObject({ title: '連絡 @Project', areaId: undefined })
+  })
+})
