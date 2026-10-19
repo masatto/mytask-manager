@@ -1,4 +1,5 @@
 import type { ViewKey } from '../views.ts'
+import { areaParam } from './areas.ts'
 import { apiFetch } from './client.ts'
 import type {
   StatusChange,
@@ -13,17 +14,18 @@ import type {
 
 export const DONE_PAGE_SIZE = 100
 
+/** 一覧・件数・検索は選んでいるエリアごとに持つ（areaId が null なら「すべて」） */
 export const taskKeys = {
   all: ['tasks'] as const,
-  list: (view: ViewKey) => ['tasks', 'list', view] as const,
-  counts: () => ['tasks', 'counts'] as const,
-  doneToday: () => ['tasks', 'list', 'done-today'] as const,
+  list: (view: ViewKey, areaId: number | null) => ['tasks', 'list', view, areaId] as const,
+  counts: (areaId: number | null) => ['tasks', 'counts', areaId] as const,
+  doneToday: (areaId: number | null) => ['tasks', 'list', 'done-today', areaId] as const,
   detail: (id: number) => ['tasks', 'detail', id] as const,
-  search: (q: string) => ['tasks', 'search', q] as const,
+  search: (q: string, areaId: number | null) => ['tasks', 'search', q, areaId] as const,
 }
 
-export function fetchTaskList(view: ViewKey, offset = 0): Promise<TaskListResponse> {
-  const params = new URLSearchParams({ view })
+export function fetchTaskList(view: ViewKey, areaId: number | null, offset = 0): Promise<TaskListResponse> {
+  const params = new URLSearchParams({ view, ...areaParam(areaId) })
   if (view === 'done') {
     params.set('offset', String(offset))
     params.set('limit', String(DONE_PAGE_SIZE))
@@ -32,17 +34,18 @@ export function fetchTaskList(view: ViewKey, offset = 0): Promise<TaskListRespon
 }
 
 /** タイトル・メモの部分一致検索。完了済みも含み、最大100行 */
-export function searchTasks(q: string): Promise<TaskListResponse> {
-  return apiFetch(`/tasks/search?${new URLSearchParams({ q })}`)
+export function searchTasks(q: string, areaId: number | null): Promise<TaskListResponse> {
+  return apiFetch(`/tasks/search?${new URLSearchParams({ q, ...areaParam(areaId) })}`)
 }
 
 /** 今日完了にした親タスク（Today の「今日完了」。件数は counts.doneToday と同じ） */
-export function fetchDoneToday(): Promise<TaskListResponse> {
-  return apiFetch('/tasks?view=done-today')
+export function fetchDoneToday(areaId: number | null): Promise<TaskListResponse> {
+  return apiFetch(`/tasks?${new URLSearchParams({ view: 'done-today', ...areaParam(areaId) })}`)
 }
 
-export function fetchTaskCounts(): Promise<TaskCounts> {
-  return apiFetch('/tasks/counts')
+export function fetchTaskCounts(areaId: number | null): Promise<TaskCounts> {
+  const params = new URLSearchParams(areaParam(areaId))
+  return apiFetch(params.size > 0 ? `/tasks/counts?${params}` : '/tasks/counts')
 }
 
 export function fetchTask(id: number): Promise<TaskDetail> {

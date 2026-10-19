@@ -36,18 +36,20 @@ public class TaskController {
     public TaskListResponse list(
             @RequestParam String view,
             @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "100") int limit) {
-        return taskService.list(TaskView.fromParam(view), offset, limit);
+            @RequestParam(defaultValue = "100") int limit,
+            @RequestParam(required = false) Long area) {
+        return taskService.list(TaskView.fromParam(view), offset, limit, area);
     }
 
     @GetMapping("/search")
-    public TaskListResponse search(@RequestParam(defaultValue = "") String q) {
-        return taskService.search(q);
+    public TaskListResponse search(@RequestParam(defaultValue = "") String q,
+            @RequestParam(required = false) Long area) {
+        return taskService.search(q, area);
     }
 
     @GetMapping("/counts")
-    public TaskCountsResponse counts() {
-        return taskService.counts();
+    public TaskCountsResponse counts(@RequestParam(required = false) Long area) {
+        return taskService.counts(area);
     }
 
     @GetMapping("/{id}")

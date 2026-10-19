@@ -10,12 +10,13 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-/** PUT /api/tasks/{id}（api-design 3.6）。全項目を送る */
+/** PUT /api/tasks/{id}（api-design 3.6）。全項目を送る。areaId はサブタスクでは使わない（親に合わせる） */
 public record TaskUpdateRequest(
         @NotBlank(message = "タイトルは必須です") @Size(max = 200, message = "タイトルは200文字以内で入力してください") String title,
         @Size(max = 10000, message = "メモは10000文字以内で入力してください") String memo,
         LocalDate dueDate,
         LocalTime dueTime,
         @NotNull(message = "優先度は必須です") Priority priority,
-        @NotNull(message = "ステータスは必須です") TaskStatus status) {
+        @NotNull(message = "ステータスは必須です") TaskStatus status,
+        Long areaId) {
 }

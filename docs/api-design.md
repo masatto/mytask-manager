@@ -1,4 +1,4 @@
-# mytask-manager API設計 v1.6
+# mytask-manager API設計 v1.7
 
 [requirements.md](requirements.md) v1.1 と [screen-design.md](screen-design.md) v1.0 に基づく。
 
@@ -407,6 +407,35 @@ TaskResponse に次の項目を加えて返す。
 3. ルールを作成した直後に、今日以前の直近の発生日があれば、すぐにタスクを生成する（例：月曜にルールを作ると、その日の分がすぐ出る。開始日が過去なら、過去の直近の回も出る）
 4. ルールを削除したとき、生成済みのタスクは残して「繰り返し」表示だけを消す
 
+## 8. エリア（Phase 13 で追加）
+
+### 8.1 AreaResponse
+
+```json
+{ "id": 2, "name": "Internal", "color": "green", "taskCount": 4, "ruleCount": 1 }
+```
+
+- `color` は `blue` / `green` / `purple` / `orange` / `teal` / `pink` / `brown` / `gray`
+- `taskCount` はそのエリアの親タスクの数（完了済みも含む）、`ruleCount` はルールの数。削除の確認に使う
+
+### 8.2 エンドポイント
+
+| メソッド | パス | 内容 |
+|---|---|---|
+| GET | `/areas` | `{ "items": [AreaResponse] }`（並び順） |
+| POST | `/areas` | `{ "name": "案件A", "color": "purple" }` → 201。10個まで、名前は1〜20文字で重複不可（違えば 400 `VALIDATION_ERROR`、field は `name`） |
+| PUT | `/areas/{id}` | 名前と色を変える（POST と同じ形） |
+| PUT | `/areas/order` | `{ "ids": [2, 1] }` の順に並べ替える。すべてのエリアを1回ずつ含めること（違えば 400、field は `ids`） |
+| DELETE | `/areas/{id}?moveTo={id}` | 削除して、そのエリアのタスク（サブタスクも）とルールを moveTo に移す。moveTo を省くと未分類にする → 204 |
+
+### 8.3 タスク・ルールのエリア
+
+- TaskResponse・RuleResponse に `areaId`（null は未分類）を加える。POST・PUT `/tasks` と POST・PUT `/rules` でも `areaId` を受け取る（ないエリアなら 400、field は `areaId`）
+- サブタスクは親のエリアに入る（POST・PUT の `areaId` は使わない）。親の `areaId` を変えるとサブタスクも一緒に移る
+- 繰り返しで生成するタスクとサブタスクは、ルールのエリアに入る
+- GET `/tasks`・`/tasks/counts`・`/tasks/search`・`/rules` に `area={id}` を付けると、そのエリアだけにする（付けなければすべて）
+- バックアップの形式バージョンを 2 にし、`areas`（並び順）とタスク・ルールの `areaId` を加える。バージョン 1 のファイルも取り込める（エリアは今のまま残し、取り込んだタスクとルールは未分類にする）
+
 ## 変更履歴
 
 | 日付 | 版 | 内容 |
@@ -418,3 +447,4 @@ TaskResponse に次の項目を加えて返す。
 | 2026-10-15 | 1.4 | 件数に `doneToday` を追加（3.3）。自動バックアップからの復元（6.4）を追加 |
 | 2026-10-15 | 1.5 | 接続の制限（別のサイトからの操作・DNS リバインディングの拒否）と 403・415 を追加 |
 | 2026-10-15 | 1.6 | 今日完了ビュー（`view=done-today`）、自動バックアップのコピー先と今すぐバックアップ（6.5）、`/system`（6.6）を追加 |
+| 2026-10-19 | 1.7 | エリア（8章）を追加。一覧・件数・検索・ルール一覧の `area` パラメーター、バックアップ形式バージョン 2 |

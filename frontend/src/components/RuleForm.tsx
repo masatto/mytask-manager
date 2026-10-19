@@ -5,6 +5,9 @@ import { z } from 'zod'
 import { ApiRequestError } from '../api/client.ts'
 import type { RulePreviewInput } from '../api/rules.ts'
 import { PRIORITY_LABELS, type Priority, type Rule, type RuleInput, type Weekday } from '../api/types.ts'
+import { useAreas } from '../areas/useAreas.ts'
+import { AreaRadioGroup } from '../areas/AreaRadioGroup.tsx'
+import { fromAreaField, toAreaField } from '../areas/areaField.ts'
 import { useCreateRule, useDeleteRule, useRulePreview, useUpdateRule } from '../hooks/useRules.ts'
 import { formatDate, todayKey } from '../lib/date.ts'
 import { LAST_DAY, WEEKDAYS, WEEKDAY_LABELS, weekdayOf } from '../lib/recurrence.ts'
@@ -34,6 +37,8 @@ const schema = z
     dayOfMonth: z.string(),
     startDate: z.string().min(1, '開始日は必須です'),
     endDate: z.string(),
+    /** '' は未分類 */
+    areaId: z.string(),
     subtaskTemplates: z
       .array(
         z.object({
@@ -55,7 +60,8 @@ const schema = z
 type FormValues = z.input<typeof schema>
 type FormOutput = z.output<typeof schema>
 
-function toFormValues(rule: Rule | null): FormValues {
+/** @param defaultAreaId 新規作成のときのエリア（選んでいるエリア） */
+function toFormValues(rule: Rule | null, defaultAreaId: number | null = null): FormValues {
   if (!rule) {
     // 新規作成の初期値：今日を起点に、毎週・今日の曜日
     const today = todayKey()
@@ -70,6 +76,7 @@ function toFormValues(rule: Rule | null): FormValues {
       dayOfMonth: String(now.getDate()),
       startDate: today,
       endDate: '',
+      areaId: toAreaField(defaultAreaId),
       subtaskTemplates: [],
     }
   }
@@ -83,6 +90,7 @@ function toFormValues(rule: Rule | null): FormValues {
     dayOfMonth: String(rule.pattern.dayOfMonth ?? new Date().getDate()),
     startDate: rule.startDate,
     endDate: rule.endDate ?? '',
+    areaId: toAreaField(rule.areaId),
     subtaskTemplates: rule.subtaskTemplates,
   }
 }
@@ -106,6 +114,7 @@ function toInput(v: FormOutput, active: boolean): RuleInput {
     endDate: v.endDate === '' ? null : v.endDate,
     active,
     subtaskTemplates: v.subtaskTemplates,
+    areaId: fromAreaField(v.areaId),
   }
 }
 
@@ -119,6 +128,7 @@ type RuleFormProps = {
 }
 
 export function RuleForm({ rule, onClose, onCreated, onDeleted, onDirtyChange }: RuleFormProps) {
+  const { areas, areaId: selectedAreaId } = useAreas()
   const {
     register,
     control,
@@ -128,7 +138,7 @@ export function RuleForm({ rule, onClose, onCreated, onDeleted, onDirtyChange }:
     formState: { errors, isDirty },
   } = useForm<FormValues, unknown, FormOutput>({
     resolver: zodResolver(schema),
-    defaultValues: toFormValues(rule),
+    defaultValues: toFormValues(rule, selectedAreaId),
   })
   const templates = useFieldArray({ control, name: 'subtaskTemplates' })
   const createRule = useCreateRule()
@@ -241,6 +251,16 @@ export function RuleForm({ rule, onClose, onCreated, onDeleted, onDirtyChange }:
           />
           {errors.title && <p className={formStyles.fieldError}>{errors.title.message}</p>}
         </dd>
+
+        {areas.length > 0 && (
+          <>
+            <dt>エリア</dt>
+            <dd>
+              <AreaRadioGroup registration={register('areaId')} />
+              {errors.areaId && <p className={formStyles.fieldError}>{errors.areaId.message}</p>}
+            </dd>
+          </>
+        )}
 
         <dt>優先度</dt>
         <dd>

@@ -20,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.masatto.mytask.area.AreaService;
 import com.masatto.mytask.common.ApiException;
 import com.masatto.mytask.rule.RecurrenceRule;
 import com.masatto.mytask.rule.RecurrenceRuleRepository;
@@ -44,34 +45,47 @@ public class TaskService {
 
     private final TaskRepository taskRepository;
     private final RecurrenceRuleRepository ruleRepository;
+    private final AreaService areaService;
     private final Clock clock;
 
     // ---- 一覧・件数 ----------------------------------------------------------
 
-    public TaskListResponse list(TaskView view, int offset, int limit) {
+    /**
+     * @param areaId 指定するとそのエリアのタスクだけにする（null ならすべて）。
+     *               サブタスクは親と同じエリアを持つので、タスク1件ずつの判定で親子がそろう
+     */
+    public TaskListResponse list(TaskView view, int offset, int limit, Long areaId) {
         LocalDateTime now = LocalDateTime.now(clock);
         if (view == TaskView.DONE_TODAY) {
-            List<Task> matched = taskRepository.findDoneBetween(startOfDay(now.toLocalDate()),
-                    startOfDay(now.toLocalDate().plusDays(1)));
+            List<Task> matched = inArea(doneToday(now), areaId);
             return new TaskListResponse(builderFor(matched, now).buildDone(matched), false);
         }
         if (view == TaskView.DONE) {
-            return listDone(offset, limit, now);
+            return listDone(offset, limit, now, areaId);
         }
-        return new TaskListResponse(openItems(view, taskRepository.findByStatusNot(TaskStatus.DONE), now), false);
+        return new TaskListResponse(
+                openItems(view, inArea(taskRepository.findByStatusNot(TaskStatus.DONE), areaId), now), false);
     }
 
-    public TaskCountsResponse counts() {
+    public TaskCountsResponse counts(Long areaId) {
         LocalDateTime now = LocalDateTime.now(clock);
-        List<Task> open = taskRepository.findByStatusNot(TaskStatus.DONE);
+        List<Task> open = inArea(taskRepository.findByStatusNot(TaskStatus.DONE), areaId);
         List<TaskListItem> today = openItems(TaskView.TODAY, open, now);
         return new TaskCountsResponse(
                 today.size(),
                 (int) today.stream().filter(TaskListItem::viewOverdue).count(),
                 openItems(TaskView.UPCOMING, open, now).size(),
                 openItems(TaskView.NO_DUE, open, now).size(),
-                (int) taskRepository.countDoneBetween(startOfDay(now.toLocalDate()),
-                        startOfDay(now.toLocalDate().plusDays(1))));
+                inArea(doneToday(now), areaId).size());
+    }
+
+    /** 今日完了にした親タスク（完了日時の新しい順） */
+    private List<Task> doneToday(LocalDateTime now) {
+        return taskRepository.findDoneBetween(startOfDay(now.toLocalDate()), startOfDay(now.toLocalDate().plusDays(1)));
+    }
+
+    private static List<Task> inArea(List<Task> tasks, Long areaId) {
+        return areaId == null ? tasks : tasks.stream().filter(t -> areaId.equals(t.getAreaId())).toList();
     }
 
     private Instant startOfDay(LocalDate date) {
@@ -110,13 +124,13 @@ public class TaskService {
         };
     }
 
-    private TaskListResponse listDone(int offset, int limit, LocalDateTime now) {
+    private TaskListResponse listDone(int offset, int limit, LocalDateTime now, Long areaId) {
         if (offset < 0 || limit < 1 || limit > DONE_PAGE_MAX) {
             throw ApiException.validation("limit", "offset/limit の値が不正です");
         }
         // ページングは「行（親単位）」で行う。完了日時の新しい順にまとめてから切り出す
         Map<Long, List<Task>> groups = TaskListBuilder
-                .group(taskRepository.findByStatusOrderByCompletedAtDescIdDesc(TaskStatus.DONE));
+                .group(inArea(taskRepository.findByStatusOrderByCompletedAtDescIdDesc(TaskStatus.DONE), areaId));
         List<Task> matched = groups.values().stream()
                 .skip(offset)
                 .limit(limit)
@@ -159,13 +173,13 @@ public class TaskService {
      * タイトル・メモの部分一致検索。結果は一覧と同じく親単位の行で返す。
      * 未完了の行を一覧と同じ並び順で先に、完了済みの行を完了日時の新しい順で後に並べる。
      */
-    public TaskListResponse search(String q) {
+    public TaskListResponse search(String q, Long areaId) {
         String query = q == null ? "" : q.strip();
         if (query.isEmpty() || query.length() > SEARCH_MAX_LENGTH) {
             throw ApiException.validation("q", "検索語は1〜" + SEARCH_MAX_LENGTH + "文字で入力してください");
         }
         LocalDateTime now = LocalDateTime.now(clock);
-        List<Task> matched = taskRepository.search(escapeLike(query));
+        List<Task> matched = inArea(taskRepository.search(escapeLike(query)), areaId);
 
         List<Task> open = matched.stream().filter(t -> !t.isDone()).toList();
         List<Task> done = matched.stream()
@@ -210,6 +224,9 @@ public class TaskService {
         validateDue(request.dueDate(), request.dueTime());
         Instant now = Instant.now(clock);
         Task parent = request.parentId() == null ? null : findParentForNewSubtask(request.parentId());
+        if (parent == null) {
+            areaService.checkExists(request.areaId(), "areaId");
+        }
 
         Task task = Task.create(
                 request.title().strip(),
@@ -219,6 +236,8 @@ public class TaskService {
                 request.priority() == null ? Priority.MEDIUM : request.priority(),
                 request.parentId(),
                 now);
+        // サブタスクは親のエリアに入る
+        task.setAreaId(parent == null ? request.areaId() : parent.getAreaId());
         taskRepository.save(task);
 
         // 完了済みの親に未完了のサブタスクが加わったら、親を進行中に戻す
@@ -249,6 +268,15 @@ public class TaskService {
         task.setMemo(blankToNull(request.memo()));
         task.setDue(request.dueDate(), request.dueTime());
         task.setPriority(request.priority());
+        if (!task.isSubtask() && !Objects.equals(task.getAreaId(), request.areaId())) {
+            areaService.checkExists(request.areaId(), "areaId");
+            task.setAreaId(request.areaId());
+            task.touch(now);
+            // サブタスクも親と一緒に移す（一括更新は永続化コンテキストを空にするので、親を先に書き込んでおく）
+            taskRepository.saveAndFlush(task);
+            taskRepository.updateSubtaskArea(task.getId(), request.areaId());
+            return toResponse(findTask(id), LocalDateTime.now(clock));
+        }
         task.touch(now);
         return toResponse(task, LocalDateTime.now(clock));
     }

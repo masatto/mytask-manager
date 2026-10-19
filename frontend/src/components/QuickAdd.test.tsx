@@ -33,6 +33,7 @@ describe('クイック追加の自然な書き方', () => {
         dueDate: addDays(today, 1),
         dueTime: '15:00',
         priority: 'HIGH',
+        areaId: null,
       }),
     )
     expect(input).toHaveValue('')
@@ -48,7 +49,7 @@ describe('クイック追加の自然な書き方', () => {
 
     await user.keyboard('{Enter}')
     await waitFor(() =>
-      expect(requests.find((r) => r.method === 'POST')?.body).toEqual({ title: '請求書を送る', dueDate: today }),
+      expect(requests.find((r) => r.method === 'POST')?.body).toEqual({ title: '請求書を送る', dueDate: today, areaId: null }),
     )
   })
 
@@ -59,7 +60,7 @@ describe('クイック追加の自然な書き方', () => {
     await user.type(await screen.findByRole('textbox', { name: 'タスクを追加' }), '9時半 電話{Enter}')
 
     await waitFor(() =>
-      expect(requests.find((r) => r.method === 'POST')?.body).toEqual({ title: '電話', dueDate: today, dueTime: '09:30' }),
+      expect(requests.find((r) => r.method === 'POST')?.body).toEqual({ title: '電話', dueDate: today, dueTime: '09:30', areaId: null }),
     )
   })
 

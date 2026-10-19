@@ -19,6 +19,7 @@ function withDueDate(task: Task, dueDate: string | null, now = new Date()): Task
     dueTime: dueDate && !timePassed ? task.dueTime : null,
     priority: task.priority,
     status: task.status,
+    areaId: task.areaId,
   }
 }
 

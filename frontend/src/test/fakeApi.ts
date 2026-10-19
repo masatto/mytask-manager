@@ -19,7 +19,8 @@ export function installFakeApi(handlers: Record<string, Handler>) {
     }
     requests.push(req)
     const key = `${req.method} ${req.path}`
-    const handler = handlers[key] ?? handlers[`${req.method} ${url.pathname.replace(/^\/api/, '')}`]
+    const handler =
+      handlers[key] ?? handlers[`${req.method} ${url.pathname.replace(/^\/api/, '')}`] ?? DEFAULT_HANDLERS[key]
     const res = handler ? handler(req) : { status: 404, body: { code: 'NOT_FOUND', message: 'not found' } }
     return new Response(res.status === 204 ? null : JSON.stringify(res.body ?? {}), {
       status: res.status,
@@ -28,6 +29,11 @@ export function installFakeApi(handlers: Record<string, Handler>) {
   })
   vi.stubGlobal('fetch', fetchMock)
   return { requests }
+}
+
+/** 登録しなくても応答するもの。エリアは、指定しなければ「なし」（タブを出さない）にする */
+const DEFAULT_HANDLERS: Record<string, Handler> = {
+  'GET /areas': () => ({ status: 200, body: { items: [] } }),
 }
 
 /** JSON として読めない本文（不正なファイルのテストなど）は文字列のまま記録する */
@@ -52,6 +58,7 @@ export function makeTask(overrides: Partial<Task> = {}): Task {
     overdue: false,
     parentId: null,
     recurrence: null,
+    areaId: null,
     createdAt: '2026-10-14T09:00:00+09:00',
     updatedAt: '2026-10-14T09:00:00+09:00',
     ...overrides,

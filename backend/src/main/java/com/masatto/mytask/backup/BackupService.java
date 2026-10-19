@@ -18,6 +18,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import com.masatto.mytask.area.Area;
+import com.masatto.mytask.area.AreaColor;
+import com.masatto.mytask.area.AreaRepository;
+import com.masatto.mytask.area.AreaService;
 import com.masatto.mytask.common.ApiException;
 import com.masatto.mytask.rule.RecurrenceGenerator;
 import com.masatto.mytask.rule.RecurrenceRule;
@@ -40,6 +44,7 @@ public class BackupService {
 
     private final TaskRepository taskRepository;
     private final RecurrenceRuleRepository ruleRepository;
+    private final AreaRepository areaRepository;
     private final JdbcTemplate jdbc;
     private final EntityManager entityManager;
     private final TransactionTemplate transactionTemplate;
@@ -64,13 +69,14 @@ public class BackupService {
                         .sorted(Comparator.comparing(Task::getId))
                         .map(this::toData)
                         .toList(),
-                ruleRepository.findAllByOrderByIdAsc().stream().map(this::toData).toList()));
+                ruleRepository.findAllByOrderByIdAsc().stream().map(this::toData).toList(),
+                areaRepository.findAllByOrderByPositionAscIdAsc().stream().map(this::toData).toList()));
     }
 
     private BackupDocument.TaskData toData(Task t) {
         return new BackupDocument.TaskData(t.getId(), t.getTitle(), t.getMemo(), t.getDueDate(), t.getDueTime(),
                 t.getPriority(), t.getStatus(), offset(t.getCompletedAt()), t.getParentId(), t.getRecurrenceRuleId(),
-                t.getOccurrenceDate(), offset(t.getCreatedAt()), offset(t.getUpdatedAt()));
+                t.getOccurrenceDate(), t.getAreaId(), offset(t.getCreatedAt()), offset(t.getUpdatedAt()));
     }
 
     private BackupDocument.RuleData toData(RecurrenceRule r) {
@@ -80,7 +86,12 @@ public class BackupService {
                 r.getSubtaskTemplates().stream()
                         .map(t -> new RuleRequest.Template(t.getTitle(), t.getPriority()))
                         .toList(),
-                offset(r.getCreatedAt()), offset(r.getUpdatedAt()));
+                r.getAreaId(), offset(r.getCreatedAt()), offset(r.getUpdatedAt()));
+    }
+
+    private BackupDocument.AreaData toData(Area a) {
+        return new BackupDocument.AreaData(a.getId(), a.getName(), AreaColor.of(a.getColor()), offset(a.getCreatedAt()),
+                offset(a.getUpdatedAt()));
     }
 
     private OffsetDateTime offset(Instant instant) {
@@ -133,11 +144,28 @@ public class BackupService {
 
     /** 参照関係など、DB の制約だけでは分かりやすいエラーにならないものを先に確かめる */
     private static void validate(BackupDocument doc) {
-        if (!BackupDocument.FORMAT.equals(doc.format()) || !Integer.valueOf(BackupDocument.VERSION).equals(doc.version())) {
-            throw invalid("Orbit のバックアップファイル（形式バージョン " + BackupDocument.VERSION + "）ではありません");
+        if (!BackupDocument.FORMAT.equals(doc.format()) || doc.version() == null || doc.version() < 1
+                || doc.version() > BackupDocument.VERSION) {
+            throw invalid("Orbit のバックアップファイル（形式バージョン 1〜" + BackupDocument.VERSION + "）ではありません");
         }
         if (doc.tasks() == null || doc.rules() == null) {
             throw invalid("tasks または rules がありません");
+        }
+        Set<Long> areaIds = Set.of();
+        if (hasAreas(doc)) {
+            if (doc.areas() == null) {
+                throw invalid("areas がありません");
+            }
+            if (doc.areas().size() > AreaService.MAX_AREAS) {
+                throw invalid("エリアが多すぎます（" + AreaService.MAX_AREAS + "個まで）");
+            }
+            for (BackupDocument.AreaData a : doc.areas()) {
+                if (a == null || a.id() == null || isBlank(a.name()) || a.name().strip().length() > 20
+                        || a.color() == null || a.createdAt() == null || a.updatedAt() == null) {
+                    throw invalid("エリアに必須の項目がありません（id=" + (a == null ? null : a.id()) + "）");
+                }
+            }
+            areaIds = uniqueIds(doc.areas(), BackupDocument.AreaData::id, "エリア").keySet();
         }
         for (BackupDocument.TaskData t : doc.tasks()) {
             if (t.id() == null || isBlank(t.title()) || t.priority() == null || t.status() == null
@@ -158,6 +186,11 @@ public class BackupService {
         }
         Map<Long, BackupDocument.TaskData> tasksById = uniqueIds(doc.tasks(), BackupDocument.TaskData::id, "タスク");
         Set<Long> ruleIds = uniqueIds(doc.rules(), BackupDocument.RuleData::id, "ルール").keySet();
+        for (BackupDocument.RuleData r : doc.rules()) {
+            if (hasAreas(doc) && r.areaId() != null && !areaIds.contains(r.areaId())) {
+                throw invalid("エリアが見つかりません（ルール id=" + r.id() + " の areaId=" + r.areaId() + "）");
+            }
+        }
         for (BackupDocument.TaskData t : doc.tasks()) {
             if (t.parentId() != null) {
                 BackupDocument.TaskData parent = tasksById.get(t.parentId());
@@ -168,10 +201,18 @@ public class BackupService {
                     throw invalid("サブタスクが入れ子になっています（id=" + t.id() + "）");
                 }
             }
+            if (hasAreas(doc) && t.areaId() != null && !areaIds.contains(t.areaId())) {
+                throw invalid("エリアが見つかりません（id=" + t.id() + " の areaId=" + t.areaId() + "）");
+            }
             if (t.recurrenceRuleId() != null && !ruleIds.contains(t.recurrenceRuleId())) {
                 throw invalid("生成元のルールが見つかりません（id=" + t.id() + " の recurrenceRuleId=" + t.recurrenceRuleId() + "）");
             }
         }
+    }
+
+    /** 形式バージョン 2 以降はエリアを持つ。1 ならエリアは今のまま残し、取り込むタスクとルールは未分類にする */
+    private static boolean hasAreas(BackupDocument doc) {
+        return doc.version() >= 2;
     }
 
     private static <T> Map<Long, T> uniqueIds(List<T> items, Function<T, Long> id, String label) {
@@ -190,16 +231,25 @@ public class BackupService {
         jdbc.update("DELETE FROM tasks");
         jdbc.update("DELETE FROM rule_subtask_templates");
         jdbc.update("DELETE FROM recurrence_rules");
+        boolean areas = hasAreas(doc);
+        if (areas) {
+            jdbc.update("DELETE FROM areas");
+            for (int i = 0; i < doc.areas().size(); i++) {
+                BackupDocument.AreaData a = doc.areas().get(i);
+                jdbc.update("INSERT INTO areas (id, name, color, position, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+                        a.id(), a.name().strip(), a.color().value(), i, a.createdAt(), a.updatedAt());
+            }
+        }
 
         WeekdaySetConverter weekdays = new WeekdaySetConverter();
         for (BackupDocument.RuleData r : doc.rules()) {
             jdbc.update("""
                     INSERT INTO recurrence_rules (id, title, memo, priority, due_time, pattern_type, days_of_week,
-                        day_of_month, start_date, end_date, active, last_generated_date, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        day_of_month, start_date, end_date, active, last_generated_date, area_id, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, r.id(), r.title(), r.memo(), r.priority().name(), r.dueTime(), r.pattern().type().name(),
                     weekdays.convertToDatabaseColumn(r.pattern().daysOfWeek()), r.pattern().dayOfMonth(),
-                    r.startDate(), r.endDate(), r.active(), r.lastGeneratedDate(), r.createdAt(),
+                    r.startDate(), r.endDate(), r.active(), r.lastGeneratedDate(), areas ? r.areaId() : null, r.createdAt(),
                     r.updatedAt());
             List<RuleRequest.Template> templates = Objects.requireNonNullElse(r.subtaskTemplates(), List.of());
             for (int i = 0; i < templates.size(); i++) {
@@ -209,6 +259,10 @@ public class BackupService {
         }
 
         // 親を先に入れる（サブタスクの外部キーが親を参照するため）
+        // サブタスクのエリアは親に合わせる（ファイル側で食い違っていても、一覧の絞り込みで親子が分かれないように）
+        Map<Long, Long> areaByTask = doc.tasks().stream()
+                .filter(t -> areas && t.areaId() != null)
+                .collect(Collectors.toMap(BackupDocument.TaskData::id, BackupDocument.TaskData::areaId));
         List<BackupDocument.TaskData> ordered = doc.tasks().stream()
                 .sorted(Comparator.comparing((BackupDocument.TaskData t) -> t.parentId() != null)
                         .thenComparing(BackupDocument.TaskData::id))
@@ -217,17 +271,18 @@ public class BackupService {
             boolean subtask = t.parentId() != null;
             jdbc.update("""
                     INSERT INTO tasks (id, title, memo, due_date, due_time, priority, status, completed_at, parent_id,
-                        level, parent_level, recurrence_rule_id, occurrence_date, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        level, parent_level, recurrence_rule_id, occurrence_date, area_id, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, t.id(), t.title(), t.memo(), t.dueDate(), t.dueTime(), t.priority().name(), t.status().name(),
                     t.completedAt(), t.parentId(), subtask ? 1 : 0, subtask ? 0 : null,
-                    t.recurrenceRuleId(), t.occurrenceDate(), t.createdAt(), t.updatedAt());
+                    t.recurrenceRuleId(), t.occurrenceDate(), areaByTask.get(subtask ? t.parentId() : t.id()),
+                    t.createdAt(), t.updatedAt());
         }
     }
 
     /** 次に作るタスク・ルールの ID が、取り込んだ ID と重ならないようにする */
     private void restartIdentities() {
-        for (String table : List.of("tasks", "recurrence_rules", "rule_subtask_templates")) {
+        for (String table : List.of("tasks", "recurrence_rules", "rule_subtask_templates", "areas")) {
             Long max = jdbc.queryForObject("SELECT COALESCE(MAX(id), 0) FROM " + table, Long.class);
             jdbc.execute("ALTER TABLE " + table + " ALTER COLUMN id RESTART WITH " + (max + 1));
         }

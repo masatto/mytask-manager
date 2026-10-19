@@ -1,5 +1,7 @@
 import { useState, type KeyboardEvent } from 'react'
+import type { Area } from '../api/areas.ts'
 import { PRIORITY_LABELS, type TaskCreateInput } from '../api/types.ts'
+import { useAreas } from '../areas/useAreas.ts'
 import { useCreateTask } from '../hooks/useTasks.ts'
 import { formatDate, todayKey } from '../lib/date.ts'
 import { parseQuickAdd, type ParsedQuickAdd } from '../lib/quickAddParser.ts'
@@ -15,8 +17,16 @@ type QuickAddProps = {
   compact?: boolean
 }
 
-/** 読み取った内容と既定の期限から、登録する内容を決める */
-function toInput(parsed: ParsedQuickAdd, defaultDueDate: string | null, parentId?: number): TaskCreateInput {
+/**
+ * 読み取った内容と既定の期限から、登録する内容を決める。
+ * エリアは @ で書けばそのエリア、書かなければ選んでいるエリア（サブタスクは親のエリアに入るので送らない）
+ */
+function toInput(
+  parsed: ParsedQuickAdd,
+  defaultDueDate: string | null,
+  defaultAreaId: number | null,
+  parentId?: number,
+): TaskCreateInput {
   // 時刻だけを書いたときは、既定の期限がなければ今日の時刻とみなす
   const dueDate = parsed.dueDate ?? defaultDueDate ?? (parsed.dueTime ? todayKey() : null)
   return {
@@ -24,18 +34,25 @@ function toInput(parsed: ParsedQuickAdd, defaultDueDate: string | null, parentId
     dueDate,
     ...(dueDate && parsed.dueTime ? { dueTime: parsed.dueTime } : {}),
     ...(parsed.priority ? { priority: parsed.priority } : {}),
-    ...(parentId !== undefined ? { parentId } : {}),
+    ...(parentId !== undefined ? { parentId } : { areaId: parsed.areaId ?? defaultAreaId }),
   }
 }
 
 /** 期限・優先度を読み取ったときだけ、どう登録されるかを入力欄の下に出す */
-function Preview({ parsed, input }: { parsed: ParsedQuickAdd; input: TaskCreateInput }) {
-  if (parsed.dueDate === undefined && parsed.dueTime === undefined && parsed.priority === undefined) {
+function Preview({ parsed, input, areas }: { parsed: ParsedQuickAdd; input: TaskCreateInput; areas: Area[] }) {
+  if (
+    parsed.dueDate === undefined &&
+    parsed.dueTime === undefined &&
+    parsed.priority === undefined &&
+    parsed.areaId === undefined
+  ) {
     return null
   }
+  const area = areas.find((a) => a.id === parsed.areaId)
   const parts = [
     input.dueDate ? `期限 ${formatDate(input.dueDate)}${input.dueTime ? ` ${input.dueTime}` : ''}` : '期限なし',
     parsed.priority ? `優先度 ${PRIORITY_LABELS[parsed.priority]}` : null,
+    area ? `エリア ${area.name}` : null,
   ].filter(Boolean)
   return (
     <p className={styles.preview} role="status" aria-label="読み取った内容">
@@ -53,8 +70,10 @@ function Preview({ parsed, input }: { parsed: ParsedQuickAdd; input: TaskCreateI
 export function QuickAdd({ dueDate, placeholder, parentId, compact = false }: QuickAddProps) {
   const [text, setText] = useState('')
   const createTask = useCreateTask()
-  const parsed = parseQuickAdd(text, todayKey())
-  const input = toInput(parsed, dueDate, parentId)
+  const { areas, areaId } = useAreas()
+  // サブタスクは親のエリアに入るので、@ は読み取らない（タイトルの一部として残す）
+  const parsed = parseQuickAdd(text, todayKey(), parentId === undefined ? areas : [])
+  const input = toInput(parsed, dueDate, areaId, parentId)
 
   const submit = () => {
     if (!parsed.title || createTask.isPending) {
@@ -96,7 +115,7 @@ export function QuickAdd({ dueDate, placeholder, parentId, compact = false }: Qu
         />
         {createTask.isError && <span className={styles.error}>登録できませんでした</span>}
       </div>
-      <Preview parsed={parsed} input={input} />
+      <Preview parsed={parsed} input={input} areas={areas} />
     </div>
   )
 }

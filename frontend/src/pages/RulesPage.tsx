@@ -1,5 +1,7 @@
 import { useSearchParams } from 'react-router'
 import type { Rule } from '../api/types.ts'
+import { AreaBadge } from '../areas/AreaBadge.tsx'
+import { useAreas } from '../areas/useAreas.ts'
 import { PageTitle } from '../components/PageTitle.tsx'
 import { RuleEditPanel } from '../components/RuleEditPanel.tsx'
 import { useRules, useSetRuleActive } from '../hooks/useRules.ts'
@@ -64,6 +66,7 @@ function RuleList({ selectedId, onOpen }: { selectedId: number | null; onOpen: (
   const { data, isPending, isError, refetch } = useRules()
   const setActive = useSetRuleActive()
   const { showToast } = useToast()
+  const { areas, areaId } = useAreas()
 
   if (isPending) {
     return <p className={styles.message}>読み込み中…</p>
@@ -103,6 +106,7 @@ function RuleList({ selectedId, onOpen }: { selectedId: number | null; onOpen: (
       </thead>
       <tbody>
         {data.items.map((rule) => {
+          const area = areaId === null ? areas.find((a) => a.id === rule.areaId) : undefined
           const pendingActive =
             setActive.isPending && setActive.variables?.id === rule.id ? setActive.variables.active : rule.active
           return (
@@ -118,9 +122,12 @@ function RuleList({ selectedId, onOpen }: { selectedId: number | null; onOpen: (
                 />
               </td>
               <td>
-                <button type="button" className={styles.ruleTitle} onClick={() => onOpen(rule.id)}>
-                  {rule.title}
-                </button>
+                <div className={styles.titleCell}>
+                  {area && <AreaBadge area={area} />}
+                  <button type="button" className={styles.ruleTitle} onClick={() => onOpen(rule.id)}>
+                    {rule.title}
+                  </button>
+                </div>
               </td>
               <td className={styles.sub}>{describePattern(rule.pattern)}</td>
               <td className={styles.sub}>

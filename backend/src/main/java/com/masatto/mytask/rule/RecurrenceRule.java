@@ -70,6 +70,9 @@ public class RecurrenceRule {
     /** 最後に生成した発生日。これ以前の回は（タスクが削除されていても）再生成しない */
     private LocalDate lastGeneratedDate;
 
+    /** 生成するタスクのエリア（null は未分類） */
+    private Long areaId;
+
     @OneToMany(mappedBy = "rule", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("position")
     private List<RuleSubtaskTemplate> subtaskTemplates = new ArrayList<>();
@@ -91,7 +94,8 @@ public class RecurrenceRule {
     }
 
     public void update(String title, String memo, Priority priority, LocalTime dueTime, RecurrencePattern pattern,
-            boolean active, List<TemplateSpec> templates, Instant now) {
+            boolean active, List<TemplateSpec> templates, Long areaId, Instant now) {
+        this.areaId = areaId;
         this.title = title;
         this.memo = memo;
         this.priority = priority;

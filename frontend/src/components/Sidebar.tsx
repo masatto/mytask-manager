@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { NavLink } from 'react-router'
 import type { TaskCounts } from '../api/types.ts'
+import { AreaTabs } from '../areas/AreaTabs.tsx'
 import { useTaskCounts } from '../hooks/useTasks.ts'
 import { PAGE_TITLES, VIEWS, type ViewKey } from '../views.ts'
 import { Logo } from './Logo.tsx'
@@ -36,6 +37,7 @@ export function Sidebar() {
   return (
     <nav className={styles.sidebar} aria-label="メインメニュー">
       <Logo />
+      <AreaTabs />
       <SearchBox />
       <ul className={styles.list}>
         {VIEWS.map((view) => {
