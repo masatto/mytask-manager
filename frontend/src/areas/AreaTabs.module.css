@@ -1,6 +1,7 @@
 .tabs {
-  display: flex;
-  flex-wrap: wrap;
+  /* 2列の格子にそろえる。折り返しで最後の1つだけが行全体に広がらないように、すべて同じ幅にする */
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 2px;
   margin: 0 0 8px;
   padding: 3px;
@@ -10,12 +11,9 @@
 
 .tab {
   display: inline-flex;
-  flex: 1 1 auto;
   justify-content: center;
   align-items: center;
   gap: 4px;
-  /* 1行に2つ以上は並ぶように、名前が長くても広がりすぎない */
-  max-width: 100%;
   min-width: 0;
   padding: 4px 8px;
   border: none;
@@ -41,7 +39,6 @@
 
 .name {
   overflow: hidden;
-  max-width: 7.5em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

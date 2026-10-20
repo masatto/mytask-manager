@@ -3,8 +3,8 @@ import { useAreas } from './useAreas.ts'
 import styles from './AreaTabs.module.css'
 
 /**
- * サイドバー上部のエリアの切り替え（screen-design 8章）。「すべて」と各エリアを並べ、
- * 収まらなければ折り返す（エリアが増えても横にはみ出さない）。長い名前は省略し、ツールチップで全体を見せる。
+ * サイドバー上部のエリアの切り替え（screen-design 8章）。「すべて」と各エリアを2列の格子に並べる
+ * （エリアが増えても横にはみ出さず、どのタブも同じ幅）。長い名前は省略し、ツールチップで全体を見せる。
  * エリアが1つもなければ出さない。
  */
 export function AreaTabs() {
