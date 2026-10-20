@@ -54,6 +54,9 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     @Query("UPDATE Task t SET t.areaId = :areaId WHERE t.parentId = :parentId")
     int updateSubtaskArea(Long parentId, Long areaId);
 
+    /** 同じタイトルの親タスクがあるか（計画の取り込みで二重登録を避ける。完了済みも含む） */
+    boolean existsByParentIdIsNullAndTitle(String title);
+
     /** 同じルールの同じ回が生成済みか（二重生成の防止） */
     boolean existsByRecurrenceRuleIdAndOccurrenceDate(Long recurrenceRuleId, LocalDate occurrenceDate);
 }

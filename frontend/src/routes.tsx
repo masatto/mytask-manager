@@ -1,5 +1,6 @@
 import { Navigate, type RouteObject } from 'react-router'
 import { Layout } from './components/Layout.tsx'
+import { PlanImportPage } from './pages/PlanImportPage.tsx'
 import { RulesPage } from './pages/RulesPage.tsx'
 import { SearchPage } from './pages/SearchPage.tsx'
 import { SettingsPage } from './pages/SettingsPage.tsx'
@@ -18,6 +19,7 @@ export const routes: RouteObject[] = [
       })),
       { path: '/search', element: <SearchPage /> },
       { path: '/rules', element: <RulesPage /> },
+      { path: '/plan', element: <PlanImportPage /> },
       { path: '/settings', element: <SettingsPage /> },
       { path: '*', element: <Navigate to="/today" replace /> },
     ],

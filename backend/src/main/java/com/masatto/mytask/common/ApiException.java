@@ -38,6 +38,12 @@ public class ApiException extends RuntimeException {
                 List.of(new ApiError.FieldError(field, message)), null);
     }
 
+    /** 項目ごとの入力チェックエラーをまとめて返す */
+    public static ApiException validation(List<ApiError.FieldError> fieldErrors) {
+        return new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "入力内容に誤りがあります",
+                List.copyOf(fieldErrors), null);
+    }
+
     /** 未完了のサブタスクが残る親を、一括完了の指定なしで完了にしようとした（api-design 3.7） */
     public static ApiException subtasksIncomplete(int incompleteCount) {
         return new ApiException(HttpStatus.CONFLICT, "SUBTASKS_INCOMPLETE",

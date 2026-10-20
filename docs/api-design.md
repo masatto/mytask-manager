@@ -1,4 +1,4 @@
-# mytask-manager API設計 v1.7
+# mytask-manager API設計 v1.8
 
 [requirements.md](requirements.md) v1.1 と [screen-design.md](screen-design.md) v1.0 に基づく。
 
@@ -436,6 +436,62 @@ TaskResponse に次の項目を加えて返す。
 - GET `/tasks`・`/tasks/counts`・`/tasks/search`・`/rules` に `area={id}` を付けると、そのエリアだけにする（付けなければすべて）
 - バックアップの形式バージョンを 2 にし、`areas`（並び順）とタスク・ルールの `areaId` を加える。バージョン 1 のファイルも取り込める（エリアは今のまま残し、取り込んだタスクとルールは未分類にする）
 
+## 9. 計画の取り込み（Phase 14 で追加）
+
+チャットAIが作業分割して出力した JSON（S6 でコピーするプロンプトの形式）を、親タスクとサブタスクとしてまとめて登録する。
+
+### 9.1 POST `/plan-import?dryRun={true|false}`
+
+```json
+{
+  "areaId": 3,
+  "tasks": [
+    {
+      "title": "expense-flow Step1: 環境構築と型の設計",
+      "memo": "目安 3h\n終了条件: …",
+      "dueDate": "2026-10-20",
+      "dueTime": null,
+      "priority": "MEDIUM",
+      "done": false,
+      "subtasks": [
+        { "title": "環境を構築する", "done": true },
+        { "title": "ドメインの型を書く" }
+      ]
+    }
+  ]
+}
+```
+
+| 項目 | 必須 | 入力チェック |
+|---|---|---|
+| `areaId` | | 登録先のエリア（null は未分類）。サブタスクも同じエリアに入る |
+| `tasks` | ○ | 1〜100件 |
+| `title` | ○ | 1〜200文字（前後の空白は除く） |
+| `memo` | | 10,000 文字まで |
+| `dueDate` / `dueTime` | | 文字列で受け、`YYYY-MM-DD` / `HH:mm` として読めなければ 400。`dueDate` がないときは `dueTime` を指定できない |
+| `priority` | | `HIGH` / `MEDIUM` / `LOW`（大文字小文字は問わない）。省略時は `MEDIUM` |
+| `done` | | true なら完了で登録する。親が true ならサブタスクもすべて完了にする |
+| `subtasks` | | 親1件につき50件まで。項目は親と同じ（`subtasks` は持てない） |
+
+- 誤りはすべての項目について集め、400 `VALIDATION_ERROR` の `fieldErrors` で返す。`field` は `tasks[1].subtasks[0].dueDate` の形。誤りがあれば何も登録しない
+- 同じタイトルの親タスク（完了済みも含む）が既にあるもの、同じ計画の中でタイトルが重なった2件目以降は登録せずに飛ばす（同じ計画を2回取り込んでも二重にならない）
+- 親とサブタスクは1つのトランザクションで登録する。完了のサブタスクがあり、親が完了でなければ、親は `IN_PROGRESS` にする
+- `dryRun=true` なら登録せず、同じ形の結果を返す（`id` は null）
+- レスポンス：200
+
+```json
+{
+  "created": 1,
+  "skipped": 1,
+  "tasks": [
+    { "action": "CREATE", "id": 231, "title": "…", "dueDate": "2026-10-20", "dueTime": null, "priority": "MEDIUM",
+      "done": false, "subtasks": [{ "title": "環境を構築する", "done": true }] },
+    { "action": "SKIP_DUPLICATE", "id": null, "title": "…", "dueDate": null, "dueTime": null, "priority": "MEDIUM",
+      "done": false, "subtasks": [] }
+  ]
+}
+```
+
 ## 変更履歴
 
 | 日付 | 版 | 内容 |
@@ -448,3 +504,4 @@ TaskResponse に次の項目を加えて返す。
 | 2026-10-15 | 1.5 | 接続の制限（別のサイトからの操作・DNS リバインディングの拒否）と 403・415 を追加 |
 | 2026-10-15 | 1.6 | 今日完了ビュー（`view=done-today`）、自動バックアップのコピー先と今すぐバックアップ（6.5）、`/system`（6.6）を追加 |
 | 2026-10-19 | 1.7 | エリア（8章）を追加。一覧・件数・検索・ルール一覧の `area` パラメーター、バックアップ形式バージョン 2 |
+| 2026-10-20 | 1.8 | 計画の取り込み（9章）を追加 |

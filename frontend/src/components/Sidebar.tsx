@@ -68,6 +68,11 @@ export function Sidebar() {
           </NavLink>
         </li>
         <li>
+          <NavLink to="/plan" className={linkClass}>
+            <NavLabel {...PAGE_TITLES.plan} />
+          </NavLink>
+        </li>
+        <li>
           <NavLink to="/settings" className={linkClass}>
             <NavLabel {...PAGE_TITLES.settings} />
           </NavLink>
