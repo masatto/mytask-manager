@@ -1,4 +1,4 @@
-# mytask-manager API設計 v1.9
+# mytask-manager API設計 v1.10
 
 [requirements.md](requirements.md) v1.1 と [screen-design.md](screen-design.md) v1.0 に基づく。
 
@@ -500,6 +500,38 @@ TaskResponse に次の項目を加えて返す。
 - 繰り返しで生成するタスクには、ルールの値を、サブタスクにはひな形の値をコピーする
 - 計画の取り込み（9.1）の親・サブタスクでも `estimateMinutes` を受け取り、結果の行にも返す（誤りは `tasks[0].estimateMinutes` の形）
 - バックアップの形式バージョンを 3 にし、タスク・ルール・ひな形に `estimateMinutes` を加える。バージョン 1・2 のファイルも取り込める（目安は未設定になる）
+- GET `/tasks/counts` に `todayEstimateMinutes`（今日ビューに残っている作業の目安の合計。目安が1つもなければ null）を加える
+  - 今日ビューに出ているタスク（期限が今日以前の未完了のもの）の目安を足す。サブタスクに目安がある親は、親の目安を数えずサブタスクの目安を数える（同じ作業を二重に数えないため）
+
+## 11. 計画の進み具合（Phase 16 で追加）
+
+### 11.1 GET `/plans?area={id}`
+
+タイトルが「<計画名> <番号>: <内容>」（例：`韓国語学習 Step3: …`。区切りは `:` か `：`）の親タスクを、計画名でまとめて返す。完了済みのステップも含む。2ステップ以上あるものだけを計画とみなす。`area` を付けると、そのエリアのステップだけで集計する。
+
+```json
+{ "items": [ {
+  "name": "韓国語学習", "areaId": 4, "state": "BEHIND",
+  "totalSteps": 10, "doneSteps": 1, "overdueSteps": 1,
+  "totalMinutes": 4590, "remainingMinutes": 4410,
+  "finalDueDate": "2027-01-19", "daysLeft": 91, "weeklyMinutesNeeded": 340,
+  "nextStepId": 365,
+  "steps": [ { "id": 365, "title": "韓国語学習 Step2: …", "number": 2, "status": "TODO", "dueDate": "2026-10-29",
+                "overdue": false, "estimateMinutes": 375, "remainingMinutes": 375, "subtasksDone": 0, "subtasksTotal": 6 } ]
+} ] }
+```
+
+| 項目 | 内容 |
+|---|---|
+| `state` | `DONE`（すべて完了）／`BEHIND`（期限を過ぎた未完了のステップがある）／`ON_TRACK`（それ以外） |
+| `steps` | 番号の小さい順。`estimateMinutes` はサブタスクに目安があればその合計、なければ親の目安。`remainingMinutes` は完了なら 0、サブタスクに目安があれば未完了のサブタスクの合計 |
+| `totalMinutes` / `remainingMinutes` | ステップの合計。目安が1つもなければどちらも null |
+| `daysLeft` | 今日から `finalDueDate` までの日数（今日を含む）。過ぎていれば 0 以下 |
+| `weeklyMinutesNeeded` | `remainingMinutes × 7 ÷ daysLeft`（切り上げ）。完了・期限切れ・目安なしなら null |
+| `nextStepId` | 未完了で番号が一番小さいステップ |
+
+- 並び順：完了していない計画を先に、その中では `finalDueDate` の近い順（期限なしは後ろ）
+- 計画という入れ物は持たない。タイトルの決まり（計画の取り込みで作る形）だけで判定する
 
 ## 変更履歴
 
@@ -515,3 +547,4 @@ TaskResponse に次の項目を加えて返す。
 | 2026-10-19 | 1.7 | エリア（8章）を追加。一覧・件数・検索・ルール一覧の `area` パラメーター、バックアップ形式バージョン 2 |
 | 2026-10-20 | 1.8 | 計画の取り込み（9章）を追加 |
 | 2026-10-21 | 1.9 | 繰り返し生成の実行タイミングを「日付が変わったとき」に変更（5章）。目安時間（10章）、バックアップ形式バージョン 3 |
+| 2026-10-21 | 1.10 | 件数に `todayEstimateMinutes` を追加（10章）。計画の進み具合（11章）を追加 |

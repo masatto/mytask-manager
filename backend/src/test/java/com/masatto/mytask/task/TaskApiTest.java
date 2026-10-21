@@ -416,6 +416,44 @@ class TaskApiTest {
         }
 
         @Test
+        void 件数には今日ビューの残りの目安の合計が入る() throws Exception {
+            // サブタスクに目安がある親は、親の目安（480）ではなく未完了のサブタスクの目安（60）を数える
+            long parentId = createTask("""
+                    {"title":"親","dueDate":"2026-10-14","estimateMinutes":480}
+                    """);
+            createTask("""
+                    {"title":"子1","parentId":%d,"estimateMinutes":60}
+                    """.formatted(parentId));
+            long done = createTask("""
+                    {"title":"子2","parentId":%d,"estimateMinutes":90}
+                    """.formatted(parentId));
+            changeStatus(done, "DONE");
+            createTask("""
+                    {"title":"期限切れ","dueDate":"2026-10-13","estimateMinutes":30}
+                    """);
+            createTask("""
+                    {"title":"目安なし","dueDate":"2026-10-14"}
+                    """);
+            createTask("""
+                    {"title":"明日","dueDate":"2026-10-15","estimateMinutes":100}
+                    """);
+
+            mockMvc.perform(get("/api/tasks/counts"))
+                    .andExpect(jsonPath("$.today").value(3))
+                    .andExpect(jsonPath("$.todayEstimateMinutes").value(90));
+        }
+
+        @Test
+        void 今日ビューに目安が1つもなければ合計はnull() throws Exception {
+            createTask("""
+                    {"title":"今日","dueDate":"2026-10-14"}
+                    """);
+
+            mockMvc.perform(get("/api/tasks/counts"))
+                    .andExpect(jsonPath("$.todayEstimateMinutes").value(nullValue()));
+        }
+
+        @Test
         void 範囲外は400() throws Exception {
             postTask("""
                     {"title":"t","estimateMinutes":0}
