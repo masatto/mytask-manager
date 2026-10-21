@@ -5,7 +5,7 @@ import { importPlan, type PlanImportResult } from '../api/planImport.ts'
 import { useAreas } from '../areas/useAreas.ts'
 import { PageTitle } from '../components/PageTitle.tsx'
 import { formatDate, todayKey } from '../lib/date.ts'
-import { formatEstimate, sumEstimates } from '../lib/estimate.ts'
+import { estimateOverrun, formatEstimate, sumEstimates } from '../lib/estimate.ts'
 import { buildPlanPrompt } from '../lib/planPrompt.ts'
 import { readPlanText, type ParsedPlan } from '../lib/planText.ts'
 import { useToast } from '../toast/useToast.ts'
@@ -198,8 +198,7 @@ export function PlanImportPage() {
               const skip = row.action === 'SKIP_DUPLICATE'
               const doneCount = row.subtasks.filter((s) => s.done).length
               const subtaskEstimate = sumEstimates(row.subtasks)
-              const overEstimate =
-                row.estimateMinutes != null && subtaskEstimate !== null && subtaskEstimate > row.estimateMinutes
+              const estimateOver = estimateOverrun(row.estimateMinutes, subtaskEstimate)
               return (
                 <li key={`${i}-${row.title}`} className={skip ? `${styles.item} ${styles.skip}` : styles.item}>
                   <div className={styles.itemHead}>
@@ -215,10 +214,10 @@ export function PlanImportPage() {
                     {row.done && ' ・ 完了'}
                     {skip && ' ・ 同じタイトルのタスクがあります'}
                   </p>
-                  {overEstimate && (
+                  {estimateOver !== null && (
                     <p className={styles.notice}>
                       サブタスクの目安の合計（{formatEstimate(subtaskEstimate)}）が、親の目安（
-                      {formatEstimate(row.estimateMinutes)}）を {formatEstimate(subtaskEstimate - row.estimateMinutes!)} 超えています
+                      {formatEstimate(row.estimateMinutes)}）を {formatEstimate(estimateOver)} 超えています
                     </p>
                   )}
                   {row.subtasks.length > 0 && (

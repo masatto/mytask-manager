@@ -10,7 +10,7 @@ import { AreaRadioGroup } from '../areas/AreaRadioGroup.tsx'
 import { fromAreaField, toAreaField } from '../areas/areaField.ts'
 import { useCreateRule, useDeleteRule, useRulePreview, useUpdateRule } from '../hooks/useRules.ts'
 import { formatDate, todayKey } from '../lib/date.ts'
-import { estimateMinutesOf, estimateText, formatEstimate, parseEstimate } from '../lib/estimate.ts'
+import { estimateMinutesOf, estimateText, formatEstimate, tidyEstimateText } from '../lib/estimate.ts'
 import { LAST_DAY, WEEKDAYS, WEEKDAY_LABELS, weekdayOf } from '../lib/recurrence.ts'
 import { useToast } from '../toast/useToast.ts'
 import { ConfirmDialog } from './ConfirmDialog.tsx'
@@ -243,9 +243,9 @@ export function RuleForm({ rule, onClose, onCreated, onDeleted, onDirtyChange }:
 
   /** 「90」と打って離れたら「1h30m」に整える（読めない入力はそのまま残してエラーを出す） */
   const tidyEstimate = (name: 'estimate' | `subtaskTemplates.${number}.estimate`, value: string) => {
-    const parsed = parseEstimate(value)
-    if (parsed.ok) {
-      setValue(name, formatEstimate(parsed.minutes), { shouldValidate: true })
+    const tidy = tidyEstimateText(value)
+    if (tidy !== null) {
+      setValue(name, tidy, { shouldValidate: true })
     }
   }
 

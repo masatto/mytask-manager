@@ -19,7 +19,14 @@ import { fromAreaField, toAreaField } from '../areas/areaField.ts'
 import { isChecked, useToggleComplete } from '../hooks/useToggleComplete.tsx'
 import { useDeleteTask, useDuplicateTask, useUpdateTask } from '../hooks/useTasks.ts'
 import { addDays, formatDate, formatDateTime, nextMonday, todayKey } from '../lib/date.ts'
-import { estimateMinutesOf, estimateText, formatEstimate, parseEstimate, sumEstimates } from '../lib/estimate.ts'
+import {
+  estimateMinutesOf,
+  estimateOverrun,
+  estimateText,
+  formatEstimate,
+  sumEstimates,
+  tidyEstimateText,
+} from '../lib/estimate.ts'
 import { useToast } from '../toast/useToast.ts'
 import { ConfirmDialog } from './ConfirmDialog.tsx'
 import { PriorityMark } from './PriorityMark.tsx'
@@ -144,8 +151,8 @@ export function TaskEditForm({
   }, [task])
 
   const dueDate = watch('dueDate')
-  const ownEstimate = estimateMinutesOf(watch('estimate'))
-  const overEstimate = ownEstimate !== null && subtaskEstimate !== null && subtaskEstimate > ownEstimate
+  // 保存前の入力中の値で比べる（打ち直すとすぐ超過の表示が変わるように）
+  const estimateOver = estimateOverrun(estimateMinutesOf(watch('estimate')), subtaskEstimate)
   const memoLinks = extractLinks(watch('memo'))
   const duplicateTask = useDuplicateTask()
 
@@ -362,24 +369,16 @@ export function TaskEditForm({
               placeholder="例：90、1h30m"
               aria-invalid={errors.estimate ? true : undefined}
               {...register('estimate', {
-                // 「90」と打って離れたら「1h30m」に整える（読めない入力はそのまま残してエラーを出す）
+                // 「90」と打って離れたら「1h30m」に整える
                 onBlur: (e) => {
-                  const parsed = parseEstimate(e.target.value)
-                  if (parsed.ok) {
-                    setValue('estimate', formatEstimate(parsed.minutes), { shouldValidate: true })
+                  const tidy = tidyEstimateText(e.target.value)
+                  if (tidy !== null) {
+                    setValue('estimate', tidy, { shouldValidate: true })
                   }
                 },
               })}
             />
-            {subtaskEstimate !== null && (
-              <span
-                className={overEstimate ? `${styles.estimateSum} ${styles.estimateOver}` : styles.estimateSum}
-                title={overEstimate ? 'サブタスクの目安の合計が、このタスクの目安を超えています' : undefined}
-              >
-                サブタスク合計 {formatEstimate(subtaskEstimate)}
-                {overEstimate && `（${formatEstimate(subtaskEstimate - ownEstimate!)} 超過）`}
-              </span>
-            )}
+            {subtaskEstimate !== null && <SubtaskEstimateTotal total={subtaskEstimate} over={estimateOver} />}
           </div>
           {errors.estimate && <p className={styles.fieldError}>{errors.estimate.message}</p>}
         </dd>
@@ -486,6 +485,19 @@ export function TaskEditForm({
       )}
       {confirmDialog}
     </form>
+  )
+}
+
+/** 「サブタスク合計 10h30m（2h30m 超過）」。超過していれば目立たせる */
+function SubtaskEstimateTotal({ total, over }: { total: number; over: number | null }) {
+  return (
+    <span
+      className={over !== null ? `${styles.estimateSum} ${styles.estimateOver}` : styles.estimateSum}
+      title={over !== null ? 'サブタスクの目安の合計が、このタスクの目安を超えています' : undefined}
+    >
+      サブタスク合計 {formatEstimate(total)}
+      {over !== null && `（${formatEstimate(over)} 超過）`}
+    </span>
   )
 }
 

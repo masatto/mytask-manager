@@ -1,4 +1,30 @@
-import { formatEstimate, parseEstimate, sumEstimates } from './estimate.ts'
+import { estimateOverrun, formatEstimate, parseEstimate, sumEstimates, tidyEstimateText } from './estimate.ts'
+
+describe('tidyEstimateText', () => {
+  it('読める入力は「1h30m」の形にそろえ、空は空のまま', () => {
+    expect(tidyEstimateText('90')).toBe('1h30m')
+    expect(tidyEstimateText(' 2時間 ')).toBe('2h')
+    expect(tidyEstimateText('')).toBe('')
+  })
+
+  it('読めない入力は null（入力をそのまま残すため）', () => {
+    expect(tidyEstimateText('2日')).toBeNull()
+  })
+})
+
+describe('estimateOverrun', () => {
+  it('サブタスクの合計が親を超えた分を返す', () => {
+    expect(estimateOverrun(480, 630)).toBe(150)
+  })
+
+  it('超えていない・どちらかが未設定なら null', () => {
+    expect(estimateOverrun(480, 480)).toBeNull()
+    expect(estimateOverrun(480, 300)).toBeNull()
+    expect(estimateOverrun(null, 300)).toBeNull()
+    expect(estimateOverrun(undefined, 300)).toBeNull()
+    expect(estimateOverrun(480, null)).toBeNull()
+  })
+})
 
 describe('parseEstimate', () => {
   it.each([

@@ -43,6 +43,15 @@ export function estimateMinutesOf(text: string): number | null {
   return parsed.ok ? parsed.minutes : null
 }
 
+/**
+ * 入力欄を離れたときの整形。読める入力なら「1h30m」の形（空なら空文字）にして返す。
+ * 読めなければ null（入力はそのまま残して、エラーを見せる）
+ */
+export function tidyEstimateText(text: string): string | null {
+  const parsed = parseEstimate(text)
+  return parsed.ok ? formatEstimate(parsed.minutes) : null
+}
+
 /** 90 → "1h30m"、120 → "2h"、45 → "45m"。null は空文字 */
 export function formatEstimate(minutes: number | null | undefined): string {
   if (minutes == null) {
@@ -54,6 +63,14 @@ export function formatEstimate(minutes: number | null | undefined): string {
     return `${m}m`
   }
   return m === 0 ? `${h}h` : `${h}h${m}m`
+}
+
+/** サブタスクの目安の合計が親の目安を超えた分（分）。超えていない・どちらかが未設定なら null */
+export function estimateOverrun(own: number | null | undefined, subtaskTotal: number | null): number | null {
+  if (own == null || subtaskTotal === null || subtaskTotal <= own) {
+    return null
+  }
+  return subtaskTotal - own
 }
 
 /** 目安時間のあるものだけを合計する。1件もなければ null */
