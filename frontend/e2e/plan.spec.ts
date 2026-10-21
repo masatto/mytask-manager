@@ -19,9 +19,9 @@ test('AIが出したJSONを貼り付けて確認し、登録すると一覧に�
           memo: '目安 2h\n終了条件: 動く',
           dueDate: '2030-01-10',
           priority: 'HIGH',
-          subtasks: [{ title: '環境を作る', done: true }, { title: '型を書く' }],
+          subtasks: [{ title: '環境を作る', done: true, estimateMinutes: 60 }, { title: '型を書く', estimateMinutes: 90 }],
         },
-        { title: step2, dueDate: '2030-01-11', subtasks: [{ title: 'APIを書く' }] },
+        { title: step2, dueDate: '2030-01-11', estimateMinutes: 120, subtasks: [{ title: 'APIを書く' }] },
       ],
     },
     null,
@@ -49,6 +49,14 @@ test('AIが出したJSONを貼り付けて確認し、登録すると一覧に�
   await page.getByRole('group', { name: 'エリア' }).getByRole('button', { name: areaName }).click()
   await expect(page.getByRole('button', { name: step1, exact: true })).toBeVisible()
   await page.locator('nav').screenshot({ path: test.info().outputPath('sidebar.png') })
+
+  // 計画の進み具合に「計画E2E」としてまとまる。Step1 はサブタスクの目安（60＋90）、Step2 は親の目安（120）
+  await page.getByRole('link', { name: /Progress/ }).click()
+  const card = page.getByRole('listitem', { name: '計画「計画E2E」' })
+  await expect(card.getByRole('img', { name: '2ステップ中0ステップ完了' })).toBeVisible()
+  await expect(card).toContainText('残りの目安3h30m / 4h30m')
+  await expect(card).toContainText(`次：${step1}`)
+  await page.screenshot({ path: test.info().outputPath('progress.png'), fullPage: true })
 
   // 同じ計画をもう一度取り込むと、すべて飛ばす
   await page.goto('/plan')

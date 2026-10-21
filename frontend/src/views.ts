@@ -16,5 +16,6 @@ export const PAGE_TITLES = {
   rules: { label: 'Routines', sub: '繰り返し' },
   settings: { label: 'Settings', sub: '設定' },
   search: { label: 'Search', sub: '検索' },
+  progress: { label: 'Progress', sub: '計画の進み具合' },
   plan: { label: 'Plan', sub: '計画の取り込み' },
 } as const

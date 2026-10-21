@@ -26,6 +26,9 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     List<Task> findDoneBetween(Instant from, Instant to);
 
     /** 指定した親のサブタスクを作成順に */
+    /** 親タスクすべて（完了済みも含む）。計画の進み具合の集計に使う */
+    List<Task> findByParentIdIsNull();
+
     List<Task> findByParentIdInOrderByIdAsc(Collection<Long> parentIds);
 
     List<Task> findByParentIdOrderByIdAsc(Long parentId);

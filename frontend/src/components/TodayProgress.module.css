@@ -23,6 +23,11 @@
   transition: width 0.3s ease;
 }
 
+.estimate {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
 .text {
   color: var(--color-text-sub);
   font-size: 13px;

@@ -51,6 +51,8 @@ export type TaskCounts = {
   noDue: number
   /** 今日完了にした親タスクの数 */
   doneToday: number
+  /** 今日ビューに残っている作業の目安の合計（分）。目安が1つもなければ null（古いバックエンドでは無い） */
+  todayEstimateMinutes?: number | null
 }
 
 export type StatusChange = {

@@ -70,13 +70,31 @@ public class TaskService {
     public TaskCountsResponse counts(Long areaId) {
         LocalDateTime now = LocalDateTime.now(clock);
         List<Task> open = inArea(taskRepository.findByStatusNot(TaskStatus.DONE), areaId);
-        List<TaskListItem> today = openItems(TaskView.TODAY, open, now);
+        List<Task> todayTasks = matchedOpen(TaskView.TODAY, open, now);
+        List<TaskListItem> today = builderFor(todayTasks, now).buildOpen(todayTasks);
         return new TaskCountsResponse(
                 today.size(),
                 (int) today.stream().filter(TaskListItem::viewOverdue).count(),
                 openItems(TaskView.UPCOMING, open, now).size(),
                 openItems(TaskView.NO_DUE, open, now).size(),
-                inArea(doneToday(now), areaId).size());
+                inArea(doneToday(now), areaId).size(),
+                remainingEstimate(todayTasks));
+    }
+
+    /**
+     * 今日ビューに出ている作業の残りの目安（分。目安が1つもなければ null）。
+     * サブタスクに目安がある親は、親の目安を数えずサブタスクの目安を数える（Estimates と同じ考え方）。
+     * サブタスクは今日ビューに出ているもの（期限が今日以前）だけを数える。
+     */
+    private Integer remainingEstimate(List<Task> todayTasks) {
+        List<Long> parentIds = todayTasks.stream().filter(t -> !t.isSubtask()).map(Task::getId).toList();
+        Set<Long> estimatedBySubtasks = taskRepository.findByParentIdInOrderByIdAsc(parentIds).stream()
+                .filter(s -> s.getEstimateMinutes() != null)
+                .map(Task::getParentId)
+                .collect(Collectors.toSet());
+        return Estimates.sum(todayTasks.stream()
+                .filter(t -> t.isSubtask() || !estimatedBySubtasks.contains(t.getId()))
+                .toList());
     }
 
     /** 今日完了にした親タスク（完了日時の新しい順） */
@@ -94,12 +112,17 @@ public class TaskService {
 
     /** 未完了ビューの行。件数はこの行数と一致させる（api-design 3.3） */
     private List<TaskListItem> openItems(TaskView view, List<Task> openTasks, LocalDateTime now) {
+        List<Task> matched = matchedOpen(view, openTasks, now);
+        return builderFor(matched, now).buildOpen(matched);
+    }
+
+    /** 未完了ビューの条件を満たすタスク（親・サブタスクを問わず1件ずつ判定する） */
+    private static List<Task> matchedOpen(TaskView view, List<Task> openTasks, LocalDateTime now) {
         Map<Long, Task> openById = openTasks.stream().collect(Collectors.toMap(Task::getId, Function.identity()));
         Predicate<LocalDate> condition = openViewCondition(view, now.toLocalDate());
-        List<Task> matched = openTasks.stream()
+        return openTasks.stream()
                 .filter(t -> condition.test(effectiveDueDate(t, openById)))
                 .toList();
-        return builderFor(matched, now).buildOpen(matched);
     }
 
     /**
