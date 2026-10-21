@@ -30,6 +30,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class TaskController {
 
+    private final TaskQueryService taskQueryService;
     private final TaskService taskService;
 
     @GetMapping
@@ -38,23 +39,23 @@ public class TaskController {
             @RequestParam(defaultValue = "0") int offset,
             @RequestParam(defaultValue = "100") int limit,
             @RequestParam(required = false) Long area) {
-        return taskService.list(TaskView.fromParam(view), offset, limit, area);
+        return taskQueryService.list(TaskView.fromParam(view), offset, limit, area);
     }
 
     @GetMapping("/search")
     public TaskListResponse search(@RequestParam(defaultValue = "") String q,
             @RequestParam(required = false) Long area) {
-        return taskService.search(q, area);
+        return taskQueryService.search(q, area);
     }
 
     @GetMapping("/counts")
     public TaskCountsResponse counts(@RequestParam(required = false) Long area) {
-        return taskService.counts(area);
+        return taskQueryService.counts(area);
     }
 
     @GetMapping("/{id}")
     public TaskResponse get(@PathVariable Long id) {
-        return taskService.get(id);
+        return taskQueryService.get(id);
     }
 
     @PostMapping
