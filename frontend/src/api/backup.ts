@@ -1,5 +1,10 @@
 import { apiFetch, ApiRequestError } from './client.ts'
 
+export const backupKeys = {
+  /** 自動バックアップの状態（保存済みのファイル・コピー先） */
+  auto: ['backup', 'auto'] as const,
+}
+
 export type ImportSummary = {
   current: { tasks: number; rules: number }
   incoming: { tasks: number; rules: number }
