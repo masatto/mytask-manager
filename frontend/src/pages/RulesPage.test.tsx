@@ -18,6 +18,7 @@ function makeRule(overrides: Partial<Rule> = {}): Rule {
     active: true,
     subtaskTemplates: [],
     areaId: null,
+    estimateMinutes: null,
     nextOccurrence: '2026-10-19',
     lastGeneratedDate: '2026-10-15',
     createdAt: '2026-10-01T09:00:00+09:00',
@@ -124,8 +125,9 @@ describe('S4 繰り返しルール編集', () => {
       startDate: todayKey(),
       endDate: null,
       active: true,
-      subtaskTemplates: [{ title: '来週の計画', priority: 'MEDIUM' }],
+      subtaskTemplates: [{ title: '来週の計画', priority: 'MEDIUM', estimateMinutes: null }],
       areaId: null,
+      estimateMinutes: null,
     })
     await waitFor(() => expect(router.state.location.search).toBe('?rule=5'))
   })

@@ -59,6 +59,7 @@ export function makeTask(overrides: Partial<Task> = {}): Task {
     parentId: null,
     recurrence: null,
     areaId: null,
+    estimateMinutes: null,
     createdAt: '2026-10-14T09:00:00+09:00',
     updatedAt: '2026-10-14T09:00:00+09:00',
     ...overrides,

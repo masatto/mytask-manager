@@ -91,11 +91,13 @@ public class RecurrenceGenerator {
                 null, now);
         parent.linkRecurrence(rule.getId(), occurrence);
         parent.setAreaId(rule.getAreaId());
+        parent.setEstimateMinutes(rule.getEstimateMinutes());
         taskRepository.save(parent);
         for (RuleSubtaskTemplate template : rule.getSubtaskTemplates()) {
             Task subtask = Task.create(template.getTitle(), null, null, null, template.getPriority(), parent.getId(),
                     now);
             subtask.setAreaId(rule.getAreaId());
+            subtask.setEstimateMinutes(template.getEstimateMinutes());
             taskRepository.save(subtask);
         }
         return parent;

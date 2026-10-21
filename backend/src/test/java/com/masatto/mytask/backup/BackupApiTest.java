@@ -69,7 +69,7 @@ class BackupApiTest {
     /** 親・サブタスク・完了済み・繰り返し（ひな形つき）を含むデータを作る */
     private void seed() throws Exception {
         long parent = create("/api/tasks", """
-                {"title":"設計レビューの指摘対応","dueDate":"2026-10-13","dueTime":"18:00","priority":"HIGH","memo":"メモ"}
+                {"title":"設計レビューの指摘対応","dueDate":"2026-10-13","dueTime":"18:00","priority":"HIGH","memo":"メモ","estimateMinutes":120}
                 """);
         long sub = create("/api/tasks", "{\"title\":\"指摘1\",\"parentId\":" + parent + "}");
         create("/api/tasks", "{\"title\":\"指摘2\",\"parentId\":" + parent + "}");
@@ -77,8 +77,8 @@ class BackupApiTest {
                 .content("{\"status\":\"DONE\"}"));
         create("/api/rules", """
                 {"title":"週次の振り返り","priority":"MEDIUM","dueTime":"17:00",
-                 "pattern":{"type":"WEEKLY","daysOfWeek":["WED","MON"]},"startDate":"2026-10-01",
-                 "subtaskTemplates":[{"title":"アウトプット確認","priority":"MEDIUM"},{"title":"来週の計画","priority":"LOW"}]}
+                 "pattern":{"type":"WEEKLY","daysOfWeek":["WED","MON"]},"startDate":"2026-10-01","estimateMinutes":30,
+                 "subtaskTemplates":[{"title":"アウトプット確認","priority":"MEDIUM","estimateMinutes":10},{"title":"来週の計画","priority":"LOW"}]}
                 """);
     }
 
@@ -109,16 +109,19 @@ class BackupApiTest {
                 .andExpect(header().string("Content-Disposition",
                         containsString("attachment; filename=\"orbit-20261014-1000.json\"")))
                 .andExpect(jsonPath("$.format").value("mytask-manager-backup"))
-                .andExpect(jsonPath("$.version").value(2))
+                .andExpect(jsonPath("$.version").value(3))
                 .andExpect(jsonPath("$.exportedAt").value("2026-10-14T10:00:00+09:00"))
                 // 親・サブタスク2件・ルールから生成された親・そのサブタスク2件
                 .andExpect(jsonPath("$.tasks", hasSize(6)))
                 .andExpect(jsonPath("$.tasks[0].dueTime").value("18:00"))
+                .andExpect(jsonPath("$.tasks[0].estimateMinutes").value(120))
                 .andExpect(jsonPath("$.tasks[1].parentId").value((Object) JsonPath.read(exportJson(), "$.tasks[0].id")))
                 .andExpect(jsonPath("$.tasks[1].completedAt").value("2026-10-14T10:00:00+09:00"))
                 .andExpect(jsonPath("$.rules[0].pattern.daysOfWeek", contains("MON", "WED")))
                 .andExpect(jsonPath("$.rules[0].lastGeneratedDate").value("2026-10-14"))
-                .andExpect(jsonPath("$.rules[0].subtaskTemplates[*].title", contains("アウトプット確認", "来週の計画")));
+                .andExpect(jsonPath("$.rules[0].subtaskTemplates[*].title", contains("アウトプット確認", "来週の計画")))
+                .andExpect(jsonPath("$.rules[0].estimateMinutes").value(30))
+                .andExpect(jsonPath("$.rules[0].subtaskTemplates[0].estimateMinutes").value(10));
     }
 
     @Test
@@ -218,7 +221,7 @@ class BackupApiTest {
         @Test
         void 形式やバージョンが違う() throws Exception {
             assertRejected("{\"format\":\"other\",\"version\":1,\"tasks\":[],\"rules\":[]}", "形式バージョン");
-            assertRejected("{\"format\":\"mytask-manager-backup\",\"version\":3,\"tasks\":[],\"rules\":[]}", "形式バージョン");
+            assertRejected("{\"format\":\"mytask-manager-backup\",\"version\":4,\"tasks\":[],\"rules\":[]}", "形式バージョン");
         }
 
         @Test

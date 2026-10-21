@@ -72,6 +72,10 @@ public class Task {
     @Setter
     private Long areaId;
 
+    /** 目安時間（分。null は未設定）。親の目安とサブタスクの合計は画面で比べる */
+    @Setter
+    private Integer estimateMinutes;
+
     @Column(nullable = false)
     private Instant createdAt;
 

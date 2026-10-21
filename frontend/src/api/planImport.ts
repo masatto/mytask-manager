@@ -9,6 +9,8 @@ export type PlanTaskInput = {
   dueTime?: string | null | undefined
   priority?: string | null | undefined
   done?: boolean | null | undefined
+  /** 目安時間（分） */
+  estimateMinutes?: number | null | undefined
 }
 
 export type PlanImportRequest = {
@@ -25,7 +27,8 @@ export type PlanImportRow = {
   dueTime: string | null
   priority: Priority
   done: boolean
-  subtasks: { title: string; done: boolean }[]
+  estimateMinutes: number | null
+  subtasks: { title: string; done: boolean; estimateMinutes: number | null }[]
 }
 
 export type PlanImportResult = { created: number; skipped: number; tasks: PlanImportRow[] }

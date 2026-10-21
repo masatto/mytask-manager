@@ -27,9 +27,10 @@ public record PlanImportResponse(int created, int skipped, List<Row> tasks) {
             @JsonFormat(pattern = "HH:mm") LocalTime dueTime,
             Priority priority,
             boolean done,
+            Integer estimateMinutes,
             List<SubRow> subtasks) {
     }
 
-    public record SubRow(String title, boolean done) {
+    public record SubRow(String title, boolean done, Integer estimateMinutes) {
     }
 }

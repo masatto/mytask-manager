@@ -73,6 +73,9 @@ public class RecurrenceRule {
     /** 生成するタスクのエリア（null は未分類） */
     private Long areaId;
 
+    /** 生成するタスクの目安時間（分。null は未設定） */
+    private Integer estimateMinutes;
+
     @OneToMany(mappedBy = "rule", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("position")
     private List<RuleSubtaskTemplate> subtaskTemplates = new ArrayList<>();
@@ -83,8 +86,8 @@ public class RecurrenceRule {
     @Column(nullable = false)
     private Instant updatedAt;
 
-    /** ひな形のサブタスク（タイトルと優先度） */
-    public record TemplateSpec(String title, Priority priority) {
+    /** ひな形のサブタスク（タイトル・優先度・目安時間） */
+    public record TemplateSpec(String title, Priority priority, Integer estimateMinutes) {
     }
 
     public static RecurrenceRule create(Instant now) {
@@ -94,8 +97,9 @@ public class RecurrenceRule {
     }
 
     public void update(String title, String memo, Priority priority, LocalTime dueTime, RecurrencePattern pattern,
-            boolean active, List<TemplateSpec> templates, Long areaId, Instant now) {
+            boolean active, List<TemplateSpec> templates, Long areaId, Integer estimateMinutes, Instant now) {
         this.areaId = areaId;
+        this.estimateMinutes = estimateMinutes;
         this.title = title;
         this.memo = memo;
         this.priority = priority;
@@ -118,9 +122,9 @@ public class RecurrenceRule {
         for (int i = 0; i < templates.size(); i++) {
             TemplateSpec spec = templates.get(i);
             if (i < subtaskTemplates.size()) {
-                subtaskTemplates.get(i).update(spec.title(), spec.priority());
+                subtaskTemplates.get(i).update(spec.title(), spec.priority(), spec.estimateMinutes());
             } else {
-                subtaskTemplates.add(new RuleSubtaskTemplate(this, i, spec.title(), spec.priority()));
+                subtaskTemplates.add(new RuleSubtaskTemplate(this, i, spec.title(), spec.priority(), spec.estimateMinutes()));
             }
         }
         while (subtaskTemplates.size() > templates.size()) {

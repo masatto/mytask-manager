@@ -238,6 +238,7 @@ public class TaskService {
                 now);
         // サブタスクは親のエリアに入る
         task.setAreaId(parent == null ? request.areaId() : parent.getAreaId());
+        task.setEstimateMinutes(request.estimateMinutes());
         taskRepository.save(task);
 
         // 完了済みの親に未完了のサブタスクが加わったら、親を進行中に戻す
@@ -268,6 +269,7 @@ public class TaskService {
         task.setMemo(blankToNull(request.memo()));
         task.setDue(request.dueDate(), request.dueTime());
         task.setPriority(request.priority());
+        task.setEstimateMinutes(request.estimateMinutes());
         if (!task.isSubtask() && !Objects.equals(task.getAreaId(), request.areaId())) {
             areaService.checkExists(request.areaId(), "areaId");
             task.setAreaId(request.areaId());

@@ -19,6 +19,7 @@ import { fromAreaField, toAreaField } from '../areas/areaField.ts'
 import { isChecked, useToggleComplete } from '../hooks/useToggleComplete.tsx'
 import { useDeleteTask, useDuplicateTask, useUpdateTask } from '../hooks/useTasks.ts'
 import { addDays, formatDate, formatDateTime, nextMonday, todayKey } from '../lib/date.ts'
+import { estimateMinutesOf, estimateText, formatEstimate, parseEstimate, sumEstimates } from '../lib/estimate.ts'
 import { useToast } from '../toast/useToast.ts'
 import { ConfirmDialog } from './ConfirmDialog.tsx'
 import { PriorityMark } from './PriorityMark.tsx'
@@ -39,6 +40,8 @@ const schema = z
     status: z.enum(STATUSES),
     /** '' は未分類 */
     areaId: z.string(),
+    /** 「90」「1h30m」などの入力。保存時に分へ直す（'' は未設定） */
+    estimate: estimateText,
   })
   .refine((v) => !v.dueTime || v.dueDate !== '', {
     path: ['dueTime'],
@@ -63,6 +66,7 @@ function toFormValues(task: TaskDetail): FormValues {
     priority: task.priority,
     status: task.status,
     areaId: toAreaField(task.areaId),
+    estimate: formatEstimate(task.estimateMinutes),
   }
 }
 
@@ -75,6 +79,7 @@ function toUpdateInput(values: FormOutput): TaskUpdateInput {
     priority: values.priority,
     status: values.status,
     areaId: fromAreaField(values.areaId),
+    estimateMinutes: estimateMinutesOf(values.estimate),
   }
 }
 
@@ -120,6 +125,7 @@ export function TaskEditForm({
   const subtasks = task.subtasks ?? []
   const { areas } = useAreas()
   const incompleteSubtasks = subtasks.filter((s) => s.status !== 'DONE').length
+  const subtaskEstimate = sumEstimates(subtasks)
 
   useEffect(() => {
     onDirtyChange(isDirty)
@@ -138,6 +144,8 @@ export function TaskEditForm({
   }, [task])
 
   const dueDate = watch('dueDate')
+  const ownEstimate = estimateMinutesOf(watch('estimate'))
+  const overEstimate = ownEstimate !== null && subtaskEstimate !== null && subtaskEstimate > ownEstimate
   const memoLinks = extractLinks(watch('memo'))
   const duplicateTask = useDuplicateTask()
 
@@ -162,7 +170,8 @@ export function TaskEditForm({
         onError: (error) => {
           if (error instanceof ApiRequestError && error.fieldErrors.length > 0) {
             for (const fe of error.fieldErrors) {
-              setError(fe.field as keyof FormValues, { message: fe.message })
+              const field = fe.field === 'estimateMinutes' ? 'estimate' : fe.field
+              setError(field as keyof FormValues, { message: fe.message })
             }
           } else {
             showToast({ message: '保存できませんでした' })
@@ -342,6 +351,39 @@ export function TaskEditForm({
           {errors.dueTime && <p className={styles.fieldError}>{errors.dueTime.message}</p>}
         </dd>
 
+        <dt>
+          <label htmlFor="task-estimate">目安時間</label>
+        </dt>
+        <dd>
+          <div className={styles.dueRow}>
+            <input
+              id="task-estimate"
+              className={`${styles.input} ${styles.estimateInput}`}
+              placeholder="例：90、1h30m"
+              aria-invalid={errors.estimate ? true : undefined}
+              {...register('estimate', {
+                // 「90」と打って離れたら「1h30m」に整える（読めない入力はそのまま残してエラーを出す）
+                onBlur: (e) => {
+                  const parsed = parseEstimate(e.target.value)
+                  if (parsed.ok) {
+                    setValue('estimate', formatEstimate(parsed.minutes), { shouldValidate: true })
+                  }
+                },
+              })}
+            />
+            {subtaskEstimate !== null && (
+              <span
+                className={overEstimate ? `${styles.estimateSum} ${styles.estimateOver}` : styles.estimateSum}
+                title={overEstimate ? 'サブタスクの目安の合計が、このタスクの目安を超えています' : undefined}
+              >
+                サブタスク合計 {formatEstimate(subtaskEstimate)}
+                {overEstimate && `（${formatEstimate(subtaskEstimate - ownEstimate!)} 超過）`}
+              </span>
+            )}
+          </div>
+          {errors.estimate && <p className={styles.fieldError}>{errors.estimate.message}</p>}
+        </dd>
+
         {task.recurrence && (
           <>
             <dt>繰り返し</dt>
@@ -473,6 +515,11 @@ function SubtaskItem({ task, checked, onToggle, onOpen }: SubtaskItemProps) {
         {task.title}
       </button>
       <PriorityMark priority={task.priority} />
+      {task.estimateMinutes != null && (
+        <span className={styles.subtaskEstimate} aria-label={`目安 ${formatEstimate(task.estimateMinutes)}`}>
+          {formatEstimate(task.estimateMinutes)}
+        </span>
+      )}
       {due && <span className={task.overdue ? `${styles.subtaskDue} ${styles.overdue}` : styles.subtaskDue}>{due}</span>}
     </li>
   )

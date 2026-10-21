@@ -120,6 +120,7 @@ describe('TaskListPage', () => {
     await user.type(title, 'API設計書を仕上げる')
     await user.click(within(panel).getByRole('radio', { name: '高' }))
     await user.type(within(panel).getByLabelText('期限'), '2026-10-20')
+    await user.type(within(panel).getByLabelText('目安時間'), '90')
     await user.click(save)
 
     expect(await screen.findByText('保存しました')).toBeInTheDocument()
@@ -131,6 +132,7 @@ describe('TaskListPage', () => {
       priority: 'HIGH',
       status: 'TODO',
       areaId: null,
+      estimateMinutes: 90,
     })
   })
 

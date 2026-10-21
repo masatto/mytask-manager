@@ -87,7 +87,7 @@ public class RuleService {
         RecurrencePattern pattern = toPattern(request.pattern(), request.startDate(), request.endDate());
         List<RecurrenceRule.TemplateSpec> templates = request.subtaskTemplates() == null ? List.of()
                 : request.subtaskTemplates().stream()
-                        .map(t -> new RecurrenceRule.TemplateSpec(t.title().strip(), t.priority()))
+                        .map(t -> new RecurrenceRule.TemplateSpec(t.title().strip(), t.priority(), t.estimateMinutes()))
                         .toList();
         rule.update(
                 request.title().strip(),
@@ -98,6 +98,7 @@ public class RuleService {
                 request.active() == null || request.active(),
                 templates,
                 request.areaId(),
+                request.estimateMinutes(),
                 Instant.now(clock));
     }
 
