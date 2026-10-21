@@ -9,6 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -30,89 +31,149 @@ import lombok.RequiredArgsConstructor;
 /**
  * 計画の進み具合（api-design 11章）。計画の取り込みで作る「<計画名> <番号>: <内容>」の親タスクを、計画名でまとめて集計する。
  * 計画という入れ物は持たず、タイトルの決まりだけで判定する（取り込み以外で作ったタスクも、同じ形のタイトルなら入る）。
+ *
+ * <ol>
+ * <li>親タスクのタイトルを読み、計画名と番号に分ける（{@link #parseTitle}）</li>
+ * <li>計画名ごとにまとめ、2ステップ以上あるものだけを計画にする</li>
+ * <li>計画ごとに、ステップの目安・期限から残りと必要なペースを計算する（{@link #toPlan}）</li>
+ * </ol>
  */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class PlanProgressService {
 
-    /** 「韓国語学習 Step3: …」「expense-flow Step10：…」「読書 第2回: …」。番号の前後の語は問わない */
+    /**
+     * 「韓国語学習 Step3: …」「expense-flow Step10：…」「読書 第2回: …」。
+     * 1つ目のグループが計画名、2つ目が番号。番号の前後の語（Step・第・回）は問わない。
+     */
     static final Pattern STEP_TITLE = Pattern.compile("^(.+?)\\s+\\S*?(\\d+)\\S*?\\s*[:：]");
+
     /** 1ステップだけのものは計画とみなさない（たまたま形が合っただけのタスクを出さないため） */
     static final int MIN_STEPS = 2;
+
+    /** 進行中の計画を上に、その中では最終期限の近い順（期限なしは後ろ） */
+    private static final Comparator<Plan> PLAN_ORDER = Comparator
+            .comparing((Plan p) -> p.state() == PlanState.DONE)
+            .thenComparing(Plan::finalDueDate, Comparator.nullsLast(Comparator.naturalOrder()))
+            .thenComparing(Plan::name);
 
     private final TaskRepository taskRepository;
     private final Clock clock;
 
-    private record Parsed(Task task, String name, int number) {
+    /** タイトルから読み取った計画名と番号 */
+    record StepTitle(String planName, int number) {
+    }
+
+    /** 計画のステップになる親タスク */
+    private record StepTask(Task task, StepTitle title) {
     }
 
     /** @param areaId 指定すると、そのエリアのステップだけで集計する（null ならすべて） */
     public PlanProgressResponse list(Long areaId) {
+        Map<String, List<StepTask>> stepsByPlan = stepsByPlanName(areaId);
+        Map<Long, List<Task>> subtasksByParent = subtasksOf(stepsByPlan);
         LocalDate today = LocalDate.now(clock);
-        Map<String, List<Parsed>> byName = new LinkedHashMap<>();
-        for (Task task : taskRepository.findByParentIdIsNull()) {
-            if (areaId != null && !areaId.equals(task.getAreaId())) {
-                continue;
-            }
-            Matcher m = STEP_TITLE.matcher(task.getTitle());
-            if (m.find()) {
-                byName.computeIfAbsent(m.group(1).strip(), k -> new ArrayList<>())
-                        .add(new Parsed(task, m.group(1).strip(), Integer.parseInt(m.group(2))));
-            }
-        }
-        List<Long> parentIds = byName.values().stream().flatMap(List::stream).map(p -> p.task().getId()).toList();
-        Map<Long, List<Task>> subtasks = taskRepository.findByParentIdInOrderByIdAsc(parentIds).stream()
-                .collect(Collectors.groupingBy(Task::getParentId));
 
-        List<Plan> plans = byName.values().stream()
+        List<Plan> plans = stepsByPlan.values().stream()
                 .filter(steps -> steps.size() >= MIN_STEPS)
-                .map(steps -> toPlan(steps, subtasks, today))
-                // 進行中の計画を上に、その中では最終期限の近い順
-                .sorted(Comparator.comparing((Plan p) -> p.state() == PlanState.DONE)
-                        .thenComparing(Plan::finalDueDate, Comparator.nullsLast(Comparator.naturalOrder()))
-                        .thenComparing(Plan::name))
+                .map(steps -> toPlan(steps, subtasksByParent, today))
+                .sorted(PLAN_ORDER)
                 .toList();
         return new PlanProgressResponse(plans);
     }
 
-    private static Plan toPlan(List<Parsed> parsed, Map<Long, List<Task>> subtasksByParent, LocalDate today) {
-        List<Step> steps = parsed.stream()
-                .sorted(Comparator.comparingInt(Parsed::number).thenComparing(p -> p.task().getId()))
-                .map(p -> toStep(p, subtasksByParent.getOrDefault(p.task().getId(), List.of()), today))
-                .toList();
-        int doneSteps = (int) steps.stream().filter(PlanProgressService::isDone).count();
-        int overdue = (int) steps.stream().filter(Step::overdue).count();
-        Integer total = sumOrNull(steps.stream().map(Step::estimateMinutes).toList());
-        // 完了のステップは残り 0 を返すので、目安が1つもない計画で「残り 0」にならないよう total に合わせる
-        Integer remaining = total == null ? null : sumOrNull(steps.stream().map(Step::remainingMinutes).toList());
-        LocalDate finalDue = steps.stream().map(Step::dueDate).filter(Objects::nonNull)
-                .max(Comparator.naturalOrder()).orElse(null);
-        Integer daysLeft = finalDue == null ? null : (int) ChronoUnit.DAYS.between(today, finalDue) + 1;
+    /** 「<計画名> <番号>: …」の形なら計画名と番号を返す */
+    static Optional<StepTitle> parseTitle(String title) {
+        Matcher m = STEP_TITLE.matcher(title);
+        if (!m.find()) {
+            return Optional.empty();
+        }
+        return Optional.of(new StepTitle(m.group(1).strip(), Integer.parseInt(m.group(2))));
+    }
 
-        PlanState state = doneSteps == steps.size() ? PlanState.DONE
-                : overdue > 0 ? PlanState.BEHIND : PlanState.ON_TRACK;
-        Integer weekly = state == PlanState.DONE || remaining == null || remaining == 0 || daysLeft == null
-                || daysLeft <= 0 ? null : (int) Math.ceil(remaining * 7.0 / daysLeft);
-        Long next = steps.stream().filter(s -> !isDone(s)).map(Step::id).findFirst().orElse(null);
-        return new Plan(parsed.getFirst().name(), parsed.getFirst().task().getAreaId(), state, steps.size(), doneSteps,
-                overdue, total, remaining, finalDue, daysLeft, weekly, next, steps);
+    private Map<String, List<StepTask>> stepsByPlanName(Long areaId) {
+        Map<String, List<StepTask>> byName = new LinkedHashMap<>();
+        for (Task task : taskRepository.findByParentIdIsNull()) {
+            if (areaId != null && !areaId.equals(task.getAreaId())) {
+                continue;
+            }
+            parseTitle(task.getTitle()).ifPresent(title -> byName
+                    .computeIfAbsent(title.planName(), k -> new ArrayList<>())
+                    .add(new StepTask(task, title)));
+        }
+        return byName;
+    }
+
+    /** ステップのサブタスクを親IDでまとめて取得する（ステップごとに取得すると N+1 になるため） */
+    private Map<Long, List<Task>> subtasksOf(Map<String, List<StepTask>> stepsByPlan) {
+        List<Long> parentIds = stepsByPlan.values().stream()
+                .flatMap(List::stream)
+                .map(s -> s.task().getId())
+                .toList();
+        return taskRepository.findByParentIdInOrderByIdAsc(parentIds).stream()
+                .collect(Collectors.groupingBy(Task::getParentId));
+    }
+
+    private static Plan toPlan(List<StepTask> stepTasks, Map<Long, List<Task>> subtasksByParent, LocalDate today) {
+        List<Step> steps = stepTasks.stream()
+                .sorted(Comparator.comparingInt((StepTask s) -> s.title().number()).thenComparing(s -> s.task().getId()))
+                .map(s -> toStep(s, subtasksByParent.getOrDefault(s.task().getId(), List.of()), today))
+                .toList();
+
+        int doneSteps = (int) steps.stream().filter(PlanProgressService::isDone).count();
+        int overdueSteps = (int) steps.stream().filter(Step::overdue).count();
+        PlanState state = stateOf(steps.size(), doneSteps, overdueSteps);
+
+        Integer totalMinutes = Estimates.sumMinutes(steps.stream().map(Step::estimateMinutes).toList());
+        // 完了のステップは残り 0 を返すので、目安が1つもない計画で「残り 0」にならないよう全体に合わせて null にする
+        Integer remainingMinutes = totalMinutes == null ? null
+                : Estimates.sumMinutes(steps.stream().map(Step::remainingMinutes).toList());
+
+        LocalDate finalDueDate = steps.stream()
+                .map(Step::dueDate)
+                .filter(Objects::nonNull)
+                .max(Comparator.naturalOrder())
+                .orElse(null);
+        Integer daysLeft = finalDueDate == null ? null : daysLeft(today, finalDueDate);
+        Long nextStepId = steps.stream().filter(s -> !isDone(s)).map(Step::id).findFirst().orElse(null);
+
+        return new Plan(stepTasks.getFirst().title().planName(), stepTasks.getFirst().task().getAreaId(), state,
+                steps.size(), doneSteps, overdueSteps, totalMinutes, remainingMinutes, finalDueDate, daysLeft,
+                weeklyMinutesNeeded(state, remainingMinutes, daysLeft), nextStepId, steps);
+    }
+
+    private static Step toStep(StepTask stepTask, List<Task> subtasks, LocalDate today) {
+        Task task = stepTask.task();
+        boolean overdue = !task.isDone() && task.getDueDate() != null && task.getDueDate().isBefore(today);
+        int subtasksDone = (int) subtasks.stream().filter(Task::isDone).count();
+        return new Step(task.getId(), task.getTitle(), stepTask.title().number(), task.getStatus(), task.getDueDate(),
+                overdue, Estimates.total(task, subtasks), Estimates.remaining(task, subtasks), subtasksDone,
+                subtasks.size());
+    }
+
+    private static PlanState stateOf(int totalSteps, int doneSteps, int overdueSteps) {
+        if (doneSteps == totalSteps) {
+            return PlanState.DONE;
+        }
+        return overdueSteps > 0 ? PlanState.BEHIND : PlanState.ON_TRACK;
+    }
+
+    /** 今日から最終期限までの日数（今日を含む）。最終期限が今日なら 1、過ぎていれば 0 以下 */
+    private static int daysLeft(LocalDate today, LocalDate finalDueDate) {
+        return (int) ChronoUnit.DAYS.between(today, finalDueDate) + 1;
+    }
+
+    /** 残りの目安を最終期限までに終えるのに必要な1週間あたりの分。計算できない・意味がないときは null */
+    private static Integer weeklyMinutesNeeded(PlanState state, Integer remainingMinutes, Integer daysLeft) {
+        if (state == PlanState.DONE || remainingMinutes == null || remainingMinutes == 0
+                || daysLeft == null || daysLeft <= 0) {
+            return null;
+        }
+        return (int) Math.ceil(remainingMinutes * 7.0 / daysLeft);
     }
 
     private static boolean isDone(Step step) {
         return step.status() == TaskStatus.DONE;
-    }
-
-    private static Step toStep(Parsed p, List<Task> subtasks, LocalDate today) {
-        Task t = p.task();
-        boolean overdue = !t.isDone() && t.getDueDate() != null && t.getDueDate().isBefore(today);
-        return new Step(t.getId(), t.getTitle(), p.number(), t.getStatus(), t.getDueDate(), overdue,
-                Estimates.total(t, subtasks), Estimates.remaining(t, subtasks),
-                (int) subtasks.stream().filter(Task::isDone).count(), subtasks.size());
-    }
-
-    private static Integer sumOrNull(List<Integer> values) {
-        List<Integer> present = values.stream().filter(Objects::nonNull).toList();
-        return present.isEmpty() ? null : present.stream().mapToInt(Integer::intValue).sum();
     }
 }

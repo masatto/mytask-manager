@@ -15,10 +15,15 @@ public final class Estimates {
     private Estimates() {
     }
 
-    /** 目安のあるものだけの合計。1件もなければ null */
+    /** null（目安なし）を除いた合計。1件もなければ null */
+    public static Integer sumMinutes(Collection<Integer> minutes) {
+        List<Integer> present = minutes.stream().filter(Objects::nonNull).toList();
+        return present.isEmpty() ? null : present.stream().mapToInt(Integer::intValue).sum();
+    }
+
+    /** 目安のあるタスクだけの合計。1件もなければ null */
     public static Integer sum(Collection<Task> tasks) {
-        List<Integer> values = tasks.stream().map(Task::getEstimateMinutes).filter(Objects::nonNull).toList();
-        return values.isEmpty() ? null : values.stream().mapToInt(Integer::intValue).sum();
+        return sumMinutes(tasks.stream().map(Task::getEstimateMinutes).toList());
     }
 
     public static boolean hasSubtaskEstimates(Collection<Task> subtasks) {
@@ -35,10 +40,10 @@ public final class Estimates {
         if (parent.isDone()) {
             return 0;
         }
-        if (hasSubtaskEstimates(subtasks)) {
-            Integer open = sum(subtasks.stream().filter(s -> !s.isDone()).toList());
-            return open == null ? 0 : open;
+        if (!hasSubtaskEstimates(subtasks)) {
+            return parent.getEstimateMinutes();
         }
-        return parent.getEstimateMinutes();
+        Integer open = sum(subtasks.stream().filter(s -> !s.isDone()).toList());
+        return open == null ? 0 : open;
     }
 }

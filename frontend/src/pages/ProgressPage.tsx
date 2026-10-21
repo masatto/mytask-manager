@@ -16,6 +16,8 @@ const STATE_LABELS: Record<PlanState, string> = {
   DONE: '完了',
 }
 
+const STEP_MARKS = { DONE: '✓', IN_PROGRESS: '◐', TODO: '○' } as const
+
 /**
  * 計画ごとの進み具合（screen-design 8.4）。「<計画名> <番号>: <内容>」の親タスクを計画名でまとめ、
  * 進んだステップ数・残りの目安・最終期限までに必要なペースを出す。ステップを押すと詳細パネルで開く。
@@ -57,6 +59,7 @@ export function ProgressPage() {
 
 type PlanCardProps = { plan: Plan; selectedId: number | null; onOpen: (id: number) => void }
 
+/** 計画1つ分のカード：見出し → バー → 数字 → 次のステップ → ステップの一覧 */
 function PlanCard({ plan, selectedId, onOpen }: PlanCardProps) {
   // 「すべて」のときだけエリアを出す（絞り込んでいれば全部同じなので出さない）
   const { areas, areaId } = useAreas()
@@ -88,36 +91,7 @@ function PlanCard({ plan, selectedId, onOpen }: PlanCardProps) {
         </span>
       </div>
 
-      <dl className={styles.stats}>
-        {plan.remainingMinutes !== null && plan.totalMinutes !== null && (
-          <div>
-            <dt>残りの目安</dt>
-            <dd>
-              {formatEstimate(plan.remainingMinutes) || '0m'}
-              <span className={styles.of}> / {formatEstimate(plan.totalMinutes)}</span>
-            </dd>
-          </div>
-        )}
-        {plan.finalDueDate && (
-          <div>
-            <dt>最終期限</dt>
-            <dd>
-              {formatDate(plan.finalDueDate)}
-              {plan.state !== 'DONE' && plan.daysLeft !== null && (
-                <span className={styles.of}>
-                  {plan.daysLeft > 0 ? `（あと${plan.daysLeft}日）` : '（過ぎています）'}
-                </span>
-              )}
-            </dd>
-          </div>
-        )}
-        {plan.weeklyMinutesNeeded !== null && (
-          <div>
-            <dt>必要なペース</dt>
-            <dd>週 {formatEstimate(plan.weeklyMinutesNeeded)}</dd>
-          </div>
-        )}
-      </dl>
+      <PlanStats plan={plan} />
 
       {next && (
         <p className={styles.next}>
@@ -143,12 +117,65 @@ function PlanCard({ plan, selectedId, onOpen }: PlanCardProps) {
   )
 }
 
-function StepRow({ step, selected, onOpen }: { step: PlanStep; selected: boolean; onOpen: (id: number) => void }) {
+/** 残りの目安・最終期限・必要なペース。値のないものは出さない */
+function PlanStats({ plan }: { plan: Plan }) {
+  return (
+    <dl className={styles.stats}>
+      {plan.remainingMinutes !== null && plan.totalMinutes !== null && (
+        <div>
+          <dt>残りの目安</dt>
+          <dd>
+            {formatEstimate(plan.remainingMinutes)}
+            <span className={styles.of}> / {formatEstimate(plan.totalMinutes)}</span>
+          </dd>
+        </div>
+      )}
+      {plan.finalDueDate && (
+        <div>
+          <dt>最終期限</dt>
+          <dd>
+            {formatDate(plan.finalDueDate)}
+            {plan.state !== 'DONE' && plan.daysLeft !== null && (
+              <span className={styles.of}>{daysLeftLabel(plan.daysLeft)}</span>
+            )}
+          </dd>
+        </div>
+      )}
+      {plan.weeklyMinutesNeeded !== null && (
+        <div>
+          <dt>必要なペース</dt>
+          <dd>週 {formatEstimate(plan.weeklyMinutesNeeded)}</dd>
+        </div>
+      )}
+    </dl>
+  )
+}
+
+/** 最終期限が今日なら daysLeft は 1（今日を含む日数）。0 以下は過ぎている */
+function daysLeftLabel(daysLeft: number): string {
+  return daysLeft > 0 ? `（あと${daysLeft}日）` : '（過ぎています）'
+}
+
+/** 手を付けていない・完了したステップは目安だけ、途中なら「残り 1h30m / 2h30m」 */
+function stepEstimateLabel(step: PlanStep): string {
+  if (step.estimateMinutes === null) {
+    return ''
+  }
+  const untouched = step.remainingMinutes === step.estimateMinutes
+  if (step.status === 'DONE' || untouched) {
+    return formatEstimate(step.estimateMinutes)
+  }
+  return `残り ${formatEstimate(step.remainingMinutes)} / ${formatEstimate(step.estimateMinutes)}`
+}
+
+type StepRowProps = { step: PlanStep; selected: boolean; onOpen: (id: number) => void }
+
+function StepRow({ step, selected, onOpen }: StepRowProps) {
   const done = step.status === 'DONE'
   return (
     <li className={selected ? `${styles.step} ${styles.selected}` : styles.step}>
       <span className={done ? `${styles.mark} ${styles.markDone}` : styles.mark} aria-hidden="true">
-        {done ? '✓' : step.status === 'IN_PROGRESS' ? '◐' : '○'}
+        {STEP_MARKS[step.status]}
       </span>
       <button
         type="button"
@@ -162,12 +189,7 @@ function StepRow({ step, selected, onOpen }: { step: PlanStep; selected: boolean
           ✓ {step.subtasksDone}/{step.subtasksTotal}
         </span>
       )}
-      <span className={styles.meta}>
-        {step.estimateMinutes !== null &&
-          (done || step.remainingMinutes === step.estimateMinutes
-            ? formatEstimate(step.estimateMinutes)
-            : `残り ${formatEstimate(step.remainingMinutes) || '0m'} / ${formatEstimate(step.estimateMinutes)}`)}
-      </span>
+      <span className={styles.meta}>{stepEstimateLabel(step)}</span>
       <span className={step.overdue ? `${styles.due} ${styles.overdue}` : styles.due}>
         {step.dueDate ? formatDate(step.dueDate) : ''}
       </span>

@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState, type KeyboardEvent } from 'react'
+import { useState } from 'react'
 import {
   AREA_COLORS,
   AREA_COLOR_LABELS,
@@ -13,15 +13,16 @@ import {
   updateArea,
   type Area,
   type AreaColor,
-} from '../api/areas.ts'
-import { ApiRequestError } from '../api/client.ts'
-import { ruleKeys } from '../api/rules.ts'
-import { taskKeys } from '../api/tasks.ts'
-import { AreaDot } from '../areas/AreaBadge.tsx'
-import dialogStyles from '../components/ConfirmDialog.module.css'
-import { useToast } from '../toast/useToast.ts'
+} from '../../api/areas.ts'
+import { ApiRequestError } from '../../api/client.ts'
+import { ruleKeys } from '../../api/rules.ts'
+import { taskKeys } from '../../api/tasks.ts'
+import { AreaDot } from '../../areas/AreaBadge.tsx'
+import dialogStyles from '../../components/ConfirmDialog.module.css'
+import { onEnter } from '../../lib/keyboard.ts'
+import { useToast } from '../../toast/useToast.ts'
 import styles from './AreaSettings.module.css'
-import pageStyles from './SettingsPage.module.css'
+import pageStyles from './settings.module.css'
 
 /** エラーの表示文。項目のエラーがあればその文、なければ全体の文 */
 function errorMessage(error: unknown, fallback: string): string {
@@ -173,13 +174,6 @@ function AreaRow({ area, first, last, onMove, onDelete, onSaved }: AreaRowProps)
     }
   }
 
-  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
-      e.preventDefault()
-      void save()
-    }
-  }
-
   return (
     <li className={styles.item}>
       <div className={styles.row}>
@@ -187,7 +181,7 @@ function AreaRow({ area, first, last, onMove, onDelete, onSaved }: AreaRowProps)
           className={styles.nameInput}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          onKeyDown={onKeyDown}
+          onKeyDown={onEnter(() => void save())}
           maxLength={MAX_AREA_NAME}
           aria-label={`「${area.name}」の名前`}
           aria-invalid={error ? true : undefined}
@@ -269,12 +263,7 @@ function AddAreaForm({ usedColors, onAdded }: { usedColors: AreaColor[]; onAdded
           className={styles.nameInput}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
-              e.preventDefault()
-              void add()
-            }
-          }}
+          onKeyDown={onEnter(() => void add())}
           maxLength={MAX_AREA_NAME}
           placeholder="新しいエリアの名前（例：案件A）"
           aria-label="新しいエリアの名前"

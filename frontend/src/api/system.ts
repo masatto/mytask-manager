@@ -9,6 +9,10 @@ export type SystemInfo = {
   logFile: string | null
 }
 
+export const systemKeys = {
+  info: ['system'] as const,
+}
+
 /** 動いているアプリのバージョン・ビルド日時と、データの保存先 */
 export function fetchSystemInfo(): Promise<SystemInfo> {
   return apiFetch('/system')
