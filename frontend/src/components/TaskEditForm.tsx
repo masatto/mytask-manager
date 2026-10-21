@@ -1,94 +1,29 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { z } from 'zod'
 import { ApiRequestError } from '../api/client.ts'
 import { changeTaskStatus } from '../api/tasks.ts'
-import {
-  PRIORITY_LABELS,
-  STATUS_LABELS,
-  type Priority,
-  type Task,
-  type TaskDetail,
-  type TaskStatus,
-  type TaskUpdateInput,
-} from '../api/types.ts'
+import { PRIORITIES, PRIORITY_LABELS, STATUSES, STATUS_LABELS, type TaskDetail } from '../api/types.ts'
 import { useAreas } from '../areas/useAreas.ts'
 import { AreaRadioGroup } from '../areas/AreaRadioGroup.tsx'
-import { fromAreaField, toAreaField } from '../areas/areaField.ts'
 import { isChecked, useToggleComplete } from '../hooks/useToggleComplete.tsx'
 import { useDeleteTask, useDuplicateTask, useUpdateTask } from '../hooks/useTasks.ts'
-import { addDays, formatDate, formatDateTime, nextMonday, todayKey } from '../lib/date.ts'
-import {
-  estimateMinutesOf,
-  estimateOverrun,
-  estimateText,
-  formatEstimate,
-  sumEstimates,
-  tidyEstimateText,
-} from '../lib/estimate.ts'
+import { formatDate, formatDateTime } from '../lib/date.ts'
 import { useToast } from '../toast/useToast.ts'
 import { ConfirmDialog } from './ConfirmDialog.tsx'
-import { PriorityMark } from './PriorityMark.tsx'
-import { QuickAdd } from './QuickAdd.tsx'
+import { SubtaskList } from './SubtaskList.tsx'
+import { TaskDueField } from './TaskDueField.tsx'
 import styles from './TaskEditForm.module.css'
-
-const PRIORITIES: Priority[] = ['HIGH', 'MEDIUM', 'LOW']
-const STATUSES: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE']
-
-const schema = z
-  .object({
-    title: z.string().trim().min(1, 'タイトルは必須です').max(200, 'タイトルは200文字以内で入力してください'),
-    memo: z.string().max(10000, 'メモは10000文字以内で入力してください'),
-    dueDate: z.string(),
-    // 日付が空のときは入力欄を無効にするので、値が来ないことがある
-    dueTime: z.string().optional(),
-    priority: z.enum(PRIORITIES),
-    status: z.enum(STATUSES),
-    /** '' は未分類 */
-    areaId: z.string(),
-    /** 「90」「1h30m」などの入力。保存時に分へ直す（'' は未設定） */
-    estimate: estimateText,
-  })
-  .refine((v) => !v.dueTime || v.dueDate !== '', {
-    path: ['dueTime'],
-    message: '時刻だけの期限は設定できません。日付も入力してください',
-  })
-
-type FormValues = z.input<typeof schema>
-
-/** メモに書かれた URL（http/https）。重複を除いて最大5件。クリックで開けるよう、メモの下に並べる */
-const URL_PATTERN = /https?:\/\/[^\s<>"'）」』】]+/g
-function extractLinks(memo: string | undefined): string[] {
-  return [...new Set(memo?.match(URL_PATTERN) ?? [])].slice(0, 5)
-}
-type FormOutput = z.output<typeof schema>
-
-function toFormValues(task: TaskDetail): FormValues {
-  return {
-    title: task.title,
-    memo: task.memo ?? '',
-    dueDate: task.dueDate ?? '',
-    dueTime: task.dueTime ?? '',
-    priority: task.priority,
-    status: task.status,
-    areaId: toAreaField(task.areaId),
-    estimate: formatEstimate(task.estimateMinutes),
-  }
-}
-
-function toUpdateInput(values: FormOutput): TaskUpdateInput {
-  return {
-    title: values.title,
-    memo: values.memo === '' ? null : values.memo,
-    dueDate: values.dueDate || null,
-    dueTime: values.dueDate && values.dueTime ? values.dueTime : null,
-    priority: values.priority,
-    status: values.status,
-    areaId: fromAreaField(values.areaId),
-    estimateMinutes: estimateMinutesOf(values.estimate),
-  }
-}
+import { TaskEstimateField } from './TaskEstimateField.tsx'
+import { TaskMemoField } from './TaskMemoField.tsx'
+import {
+  taskFormSchema,
+  toFormField,
+  toFormValues,
+  toUpdateInput,
+  type TaskFormOutput,
+  type TaskFormValues,
+} from './taskEditFormValues.ts'
 
 type TaskEditFormProps = {
   task: TaskDetail
@@ -100,6 +35,10 @@ type TaskEditFormProps = {
   onOpenRule: (ruleId: number) => void
 }
 
+/**
+ * タスク詳細パネル（S2）の編集フォーム。「保存」ボタンで保存する（自動保存はしない）。
+ * 入力欄の部品は Task*Field / SubtaskList、値の変換は taskEditFormValues.ts。
+ */
 export function TaskEditForm({
   task,
   onClose,
@@ -117,22 +56,22 @@ export function TaskEditForm({
     setError,
     watch,
     formState: { errors, isDirty },
-  } = useForm<FormValues, unknown, FormOutput>({
-    resolver: zodResolver(schema),
+  } = useForm<TaskFormValues, unknown, TaskFormOutput>({
+    resolver: zodResolver(taskFormSchema),
     defaultValues: toFormValues(task),
   })
   const updateTask = useUpdateTask()
   const deleteTask = useDeleteTask()
+  const duplicateTask = useDuplicateTask()
   const { toggle, pending, confirmDialog } = useToggleComplete()
   const { showToast } = useToast()
+  const { areas } = useAreas()
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   // D1：保存でステータスを完了にしようとしたが、未完了のサブタスクが残っている
-  const [confirmingComplete, setConfirmingComplete] = useState<FormOutput | null>(null)
+  const [confirmingComplete, setConfirmingComplete] = useState<TaskFormOutput | null>(null)
 
   const subtasks = task.subtasks ?? []
-  const { areas } = useAreas()
   const incompleteSubtasks = subtasks.filter((s) => s.status !== 'DONE').length
-  const subtaskEstimate = sumEstimates(subtasks)
 
   useEffect(() => {
     onDirtyChange(isDirty)
@@ -150,12 +89,6 @@ export function TaskEditForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task])
 
-  const dueDate = watch('dueDate')
-  // 保存前の入力中の値で比べる（打ち直すとすぐ超過の表示が変わるように）
-  const estimateOver = estimateOverrun(estimateMinutesOf(watch('estimate')), subtaskEstimate)
-  const memoLinks = extractLinks(watch('memo'))
-  const duplicateTask = useDuplicateTask()
-
   const handleDuplicate = async () => {
     try {
       const copy = await duplicateTask.mutateAsync(task)
@@ -166,7 +99,7 @@ export function TaskEditForm({
     }
   }
 
-  const save = (values: FormOutput) => {
+  const save = (values: TaskFormOutput) => {
     updateTask.mutate(
       { id: task.id, input: toUpdateInput(values) },
       {
@@ -177,8 +110,7 @@ export function TaskEditForm({
         onError: (error) => {
           if (error instanceof ApiRequestError && error.fieldErrors.length > 0) {
             for (const fe of error.fieldErrors) {
-              const field = fe.field === 'estimateMinutes' ? 'estimate' : fe.field
-              setError(field as keyof FormValues, { message: fe.message })
+              setError(toFormField(fe.field), { message: fe.message })
             }
           } else {
             showToast({ message: '保存できませんでした' })
@@ -188,7 +120,7 @@ export function TaskEditForm({
     )
   }
 
-  const onSubmit = (values: FormOutput) => {
+  const onSubmit = (values: TaskFormOutput) => {
     if (values.status === 'DONE' && task.status !== 'DONE' && incompleteSubtasks > 0) {
       setConfirmingComplete(values)
       return
@@ -197,7 +129,7 @@ export function TaskEditForm({
   }
 
   /** D1 で OK：サブタスクごと一括完了してから、残りの項目を保存する（api-design 3.6） */
-  const completeAllAndSave = async (values: FormOutput) => {
+  const completeAllAndSave = async (values: TaskFormOutput) => {
     setConfirmingComplete(null)
     try {
       await changeTaskStatus(task.id, 'DONE', true)
@@ -308,145 +240,48 @@ export function TaskEditForm({
           <label htmlFor="task-due-date">期限</label>
         </dt>
         <dd>
-          <div className={styles.dueRow}>
-            <input
-              id="task-due-date"
-              type="date"
-              className={styles.input}
-              {...register('dueDate', {
-                onChange: (e) => {
-                  if (!e.target.value) {
-                    setValue('dueTime', '', { shouldDirty: true })
-                  }
-                },
-              })}
-            />
-            <input
-              type="time"
-              className={styles.input}
-              aria-label="期限時刻"
-              disabled={!dueDate}
-              {...register('dueTime')}
-            />
-            <button
-              type="button"
-              className={styles.textButton}
-              onClick={() => {
-                setValue('dueDate', '', { shouldDirty: true })
-                setValue('dueTime', '', { shouldDirty: true })
-              }}
-            >
-              クリア
-            </button>
-          </div>
-          <div className={styles.quickDates} role="group" aria-label="期限をすばやく設定">
-            {[
-              { label: '今日', date: todayKey() },
-              { label: '明日', date: addDays(todayKey(), 1) },
-              { label: '来週月曜', date: nextMonday(todayKey()) },
-            ].map(({ label, date }) => (
-              <button
-                key={label}
-                type="button"
-                className={styles.quickDate}
-                onClick={() => setValue('dueDate', date, { shouldDirty: true })}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          {errors.dueTime && <p className={styles.fieldError}>{errors.dueTime.message}</p>}
+          <TaskDueField
+            register={register}
+            setValue={setValue}
+            dueDate={watch('dueDate')}
+            error={errors.dueTime?.message}
+          />
         </dd>
 
         <dt>
           <label htmlFor="task-estimate">目安時間</label>
         </dt>
         <dd>
-          <div className={styles.dueRow}>
-            <input
-              id="task-estimate"
-              className={`${styles.input} ${styles.estimateInput}`}
-              placeholder="例：90、1h30m"
-              aria-invalid={errors.estimate ? true : undefined}
-              {...register('estimate', {
-                // 「90」と打って離れたら「1h30m」に整える
-                onBlur: (e) => {
-                  const tidy = tidyEstimateText(e.target.value)
-                  if (tidy !== null) {
-                    setValue('estimate', tidy, { shouldValidate: true })
-                  }
-                },
-              })}
-            />
-            {subtaskEstimate !== null && <SubtaskEstimateTotal total={subtaskEstimate} over={estimateOver} />}
-          </div>
-          {errors.estimate && <p className={styles.fieldError}>{errors.estimate.message}</p>}
+          <TaskEstimateField
+            register={register}
+            setValue={setValue}
+            estimate={watch('estimate')}
+            subtasks={subtasks}
+            error={errors.estimate?.message}
+          />
         </dd>
 
         {task.recurrence && (
           <>
             <dt>繰り返し</dt>
             <dd className={styles.readonly}>
-              {task.recurrence.ruleId !== null ? (
-                <>
-                  {task.recurrence.ruleTitle}（{formatDate(task.recurrence.occurrenceDate)}分）
-                  <button
-                    type="button"
-                    className={styles.ruleLink}
-                    onClick={() => onOpenRule(task.recurrence!.ruleId!)}
-                  >
-                    → ルールを開く
-                  </button>
-                </>
-              ) : (
-                <>削除されたルールから生成（{formatDate(task.recurrence.occurrenceDate)}分）</>
-              )}
+              <RecurrenceInfo recurrence={task.recurrence} onOpenRule={onOpenRule} />
             </dd>
           </>
         )}
       </dl>
 
-      <label className={styles.memoLabel} htmlFor="task-memo">
-        メモ
-      </label>
-      <textarea id="task-memo" className={styles.memo} rows={5} {...register('memo')} />
-      {errors.memo && <p className={styles.fieldError}>{errors.memo.message}</p>}
-      {memoLinks.length > 0 && (
-        <ul className={styles.memoLinks} aria-label="メモのリンク">
-          {memoLinks.map((url) => (
-            <li key={url}>
-              <a href={url} target="_blank" rel="noopener noreferrer" title={url}>
-                {url.replace(/^https?:\/\//, '')}
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
+      <TaskMemoField register={register} memo={watch('memo')} error={errors.memo?.message} />
 
       {/* サブタスクの下にはサブタスクを作れないので、親のときだけ出す（1階層の制約） */}
       {!task.parent && (
-        <section className={styles.subtasks} aria-label="サブタスク">
-          <h3 className={styles.subtasksHeading}>
-            サブタスク
-            {subtasks.length > 0 && (
-              <span className={styles.subtasksCount}>
-                {subtasks.length - incompleteSubtasks}/{subtasks.length}
-              </span>
-            )}
-          </h3>
-          <ul className={styles.subtaskList}>
-            {subtasks.map((sub) => (
-              <SubtaskItem
-                key={sub.id}
-                task={sub}
-                checked={isChecked(sub, pending)}
-                onToggle={toggle}
-                onOpen={onOpenTask}
-              />
-            ))}
-          </ul>
-          <QuickAdd dueDate={null} parentId={task.id} placeholder="サブタスクを追加（例：明日 指摘1の修正）" compact />
-        </section>
+        <SubtaskList
+          parentId={task.id}
+          subtasks={subtasks}
+          isChecked={(sub) => isChecked(sub, pending)}
+          onToggle={toggle}
+          onOpen={onOpenTask}
+        />
       )}
 
       <div className={styles.actions}>
@@ -488,51 +323,24 @@ export function TaskEditForm({
   )
 }
 
-/** 「サブタスク合計 10h30m（2h30m 超過）」。超過していれば目立たせる */
-function SubtaskEstimateTotal({ total, over }: { total: number; over: number | null }) {
-  return (
-    <span
-      className={over !== null ? `${styles.estimateSum} ${styles.estimateOver}` : styles.estimateSum}
-      title={over !== null ? 'サブタスクの目安の合計が、このタスクの目安を超えています' : undefined}
-    >
-      サブタスク合計 {formatEstimate(total)}
-      {over !== null && `（${formatEstimate(over)} 超過）`}
-    </span>
-  )
+type RecurrenceInfoProps = {
+  recurrence: NonNullable<TaskDetail['recurrence']>
+  onOpenRule: (ruleId: number) => void
 }
 
-type SubtaskItemProps = {
-  task: Task
-  checked: boolean
-  onToggle: (task: Task, done: boolean) => void
-  onOpen: (id: number) => void
-}
-
-function SubtaskItem({ task, checked, onToggle, onOpen }: SubtaskItemProps) {
-  const due = task.dueDate ? [formatDate(task.dueDate), task.dueTime].filter(Boolean).join(' ') : ''
+/** 生成元の繰り返しルール。ルールが削除済みなら、その旨だけを出す */
+function RecurrenceInfo({ recurrence, onOpenRule }: RecurrenceInfoProps) {
+  const occurrence = formatDate(recurrence.occurrenceDate)
+  if (recurrence.ruleId === null) {
+    return <>削除されたルールから生成（{occurrence}分）</>
+  }
+  const ruleId = recurrence.ruleId
   return (
-    <li className={styles.subtaskItem}>
-      <input
-        type="checkbox"
-        className={styles.subtaskCheckbox}
-        checked={checked}
-        onChange={(e) => onToggle(task, e.target.checked)}
-        aria-label={`「${task.title}」を完了にする`}
-      />
-      <button
-        type="button"
-        className={checked ? `${styles.subtaskTitle} ${styles.subtaskDone}` : styles.subtaskTitle}
-        onClick={() => onOpen(task.id)}
-      >
-        {task.title}
+    <>
+      {recurrence.ruleTitle}（{occurrence}分）
+      <button type="button" className={styles.ruleLink} onClick={() => onOpenRule(ruleId)}>
+        → ルールを開く
       </button>
-      <PriorityMark priority={task.priority} />
-      {task.estimateMinutes != null && (
-        <span className={styles.subtaskEstimate} aria-label={`目安 ${formatEstimate(task.estimateMinutes)}`}>
-          {formatEstimate(task.estimateMinutes)}
-        </span>
-      )}
-      {due && <span className={task.overdue ? `${styles.subtaskDue} ${styles.overdue}` : styles.subtaskDue}>{due}</span>}
-    </li>
+    </>
   )
 }

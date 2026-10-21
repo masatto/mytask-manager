@@ -86,6 +86,10 @@ export type TaskUpdateInput = {
   estimateMinutes: number | null
 }
 
+/** 選択肢の並び順（高い順） */
+export const PRIORITIES: Priority[] = ['HIGH', 'MEDIUM', 'LOW']
+export const STATUSES: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE']
+
 export const PRIORITY_LABELS: Record<Priority, string> = {
   HIGH: '高',
   MEDIUM: '中',
