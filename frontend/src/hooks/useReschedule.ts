@@ -20,6 +20,7 @@ function withDueDate(task: Task, dueDate: string | null, now = new Date()): Task
     priority: task.priority,
     status: task.status,
     areaId: task.areaId,
+    estimateMinutes: task.estimateMinutes,
   }
 }
 

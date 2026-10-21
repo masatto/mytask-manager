@@ -5,6 +5,7 @@ import { importPlan, type PlanImportResult } from '../api/planImport.ts'
 import { useAreas } from '../areas/useAreas.ts'
 import { PageTitle } from '../components/PageTitle.tsx'
 import { formatDate, todayKey } from '../lib/date.ts'
+import { formatEstimate, sumEstimates } from '../lib/estimate.ts'
 import { buildPlanPrompt } from '../lib/planPrompt.ts'
 import { readPlanText, type ParsedPlan } from '../lib/planText.ts'
 import { useToast } from '../toast/useToast.ts'
@@ -196,6 +197,9 @@ export function PlanImportPage() {
             {checked.preview.tasks.map((row, i) => {
               const skip = row.action === 'SKIP_DUPLICATE'
               const doneCount = row.subtasks.filter((s) => s.done).length
+              const subtaskEstimate = sumEstimates(row.subtasks)
+              const overEstimate =
+                row.estimateMinutes != null && subtaskEstimate !== null && subtaskEstimate > row.estimateMinutes
               return (
                 <li key={`${i}-${row.title}`} className={skip ? `${styles.item} ${styles.skip}` : styles.item}>
                   <div className={styles.itemHead}>
@@ -206,19 +210,30 @@ export function PlanImportPage() {
                   </div>
                   <p className={styles.meta}>
                     {row.dueDate ? `期限 ${formatDate(row.dueDate)}${row.dueTime ? ` ${row.dueTime}` : ''}` : '期限なし'}
+                    {row.estimateMinutes != null && ` ・ 目安 ${formatEstimate(row.estimateMinutes)}`}
                     {row.priority === 'HIGH' && ' ・ 優先度 高'}
                     {row.done && ' ・ 完了'}
                     {skip && ' ・ 同じタイトルのタスクがあります'}
                   </p>
+                  {overEstimate && (
+                    <p className={styles.notice}>
+                      サブタスクの目安の合計（{formatEstimate(subtaskEstimate)}）が、親の目安（
+                      {formatEstimate(row.estimateMinutes)}）を {formatEstimate(subtaskEstimate - row.estimateMinutes!)} 超えています
+                    </p>
+                  )}
                   {row.subtasks.length > 0 && (
                     <details className={styles.subtasks}>
                       <summary>
                         サブタスク {row.subtasks.length}件{doneCount > 0 && `（完了 ${doneCount}）`}
+                        {subtaskEstimate !== null && ` ・ 合計 ${formatEstimate(subtaskEstimate)}`}
                       </summary>
                       <ul>
                         {row.subtasks.map((s, j) => (
                           <li key={`${j}-${s.title}`} className={s.done || row.done ? styles.subDone : undefined}>
                             {s.title}
+                            {s.estimateMinutes != null && (
+                              <span className={styles.subEstimate}>{formatEstimate(s.estimateMinutes)}</span>
+                            )}
                           </li>
                         ))}
                       </ul>

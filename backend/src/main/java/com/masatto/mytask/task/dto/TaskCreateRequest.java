@@ -5,6 +5,8 @@ import java.time.LocalTime;
 
 import com.masatto.mytask.task.Priority;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -16,5 +18,6 @@ public record TaskCreateRequest(
         LocalTime dueTime,
         Priority priority,
         Long parentId,
-        Long areaId) {
+        Long areaId,
+        @Min(value = 1, message = "目安時間は1〜9999分で入力してください") @Max(value = 9999, message = "目安時間は1〜9999分で入力してください") Integer estimateMinutes) {
 }

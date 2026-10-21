@@ -30,6 +30,7 @@ function validate(plan) {
     if (t.dueTime != null && !TIME.test(t.dueTime)) errors.push(`${where}: dueTime は HH:mm で指定します`)
     if (t.dueTime != null && t.dueDate == null) errors.push(`${where}: dueTime だけを指定することはできません`)
     if (t.priority != null && !PRIORITIES.includes(t.priority)) errors.push(`${where}: priority は ${PRIORITIES.join(' / ')} のどれかです`)
+    if (t.estimateMinutes != null && !(Number.isInteger(t.estimateMinutes) && t.estimateMinutes >= 1 && t.estimateMinutes <= 9999)) errors.push(`${where}: estimateMinutes は 1〜9999 の整数（分）で指定します`)
   }
   plan.tasks.forEach((t, i) => {
     const where = `tasks[${i}]`
@@ -60,6 +61,7 @@ const toRequest = (t, extra) => ({
   dueDate: t.dueDate ?? null,
   dueTime: t.dueTime ?? null,
   priority: t.priority ?? 'MEDIUM',
+  estimateMinutes: t.estimateMinutes ?? null,
   parentId: null,
   ...extra,
 })

@@ -1,4 +1,4 @@
-# mytask-manager API設計 v1.8
+# mytask-manager API設計 v1.9
 
 [requirements.md](requirements.md) v1.1 と [screen-design.md](screen-design.md) v1.0 に基づく。
 
@@ -492,6 +492,15 @@ TaskResponse に次の項目を加えて返す。
 }
 ```
 
+## 10. 目安時間（Phase 15 で追加）
+
+- TaskResponse・RuleResponse・ひな形（`subtaskTemplates[]`）に `estimateMinutes`（分の整数。null は未設定）を加える
+- POST・PUT `/tasks`、POST・PUT `/rules`（ひな形も）で受け取る。1〜9999 でなければ 400 `VALIDATION_ERROR`（field は `estimateMinutes`、ひな形は `subtaskTemplates[0].estimateMinutes`）
+- PUT `/tasks/{id}` は全項目を送る決まりなので、送らなければ未設定に戻る（期限の延期など、一覧からの更新でも今の値を送る）
+- 繰り返しで生成するタスクには、ルールの値を、サブタスクにはひな形の値をコピーする
+- 計画の取り込み（9.1）の親・サブタスクでも `estimateMinutes` を受け取り、結果の行にも返す（誤りは `tasks[0].estimateMinutes` の形）
+- バックアップの形式バージョンを 3 にし、タスク・ルール・ひな形に `estimateMinutes` を加える。バージョン 1・2 のファイルも取り込める（目安は未設定になる）
+
 ## 変更履歴
 
 | 日付 | 版 | 内容 |
@@ -505,3 +514,4 @@ TaskResponse に次の項目を加えて返す。
 | 2026-10-15 | 1.6 | 今日完了ビュー（`view=done-today`）、自動バックアップのコピー先と今すぐバックアップ（6.5）、`/system`（6.6）を追加 |
 | 2026-10-19 | 1.7 | エリア（8章）を追加。一覧・件数・検索・ルール一覧の `area` パラメーター、バックアップ形式バージョン 2 |
 | 2026-10-20 | 1.8 | 計画の取り込み（9章）を追加 |
+| 2026-10-21 | 1.9 | 繰り返し生成の実行タイミングを「日付が変わったとき」に変更（5章）。目安時間（10章）、バックアップ形式バージョン 3 |

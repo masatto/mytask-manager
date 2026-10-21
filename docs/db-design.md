@@ -1,4 +1,4 @@
-# mytask-manager DB設計 v1.2
+# mytask-manager DB設計 v1.3
 
 [requirements.md](requirements.md) v1.1 と [api-design.md](api-design.md) v1.0 に基づく。
 
@@ -123,6 +123,16 @@ recurrence_rules 1 ──── 0..* rule_subtask_templates
 - サブタスクの `area_id` は親と同じ値を持つ。一覧の絞り込みをタスク1件ずつの判定で済ませ、親子が別々に絞り込まれないようにするため（親を移すとサブタスクも一緒に更新する）
 - 初期データとして Project（青）と Internal（緑）を入れる
 
+### 3.6 目安時間（V3 で追加）
+
+| テーブル | 列 | 型 | NULL | 説明 |
+|---|---|---|---|---|
+| `tasks` | `estimate_minutes` | INTEGER | ○ | 目安時間（分）。1〜9999（`ck_tasks_estimate`） |
+| `recurrence_rules` | `estimate_minutes` | INTEGER | ○ | 生成する親タスクの目安時間（`ck_rules_estimate`） |
+| `rule_subtask_templates` | `estimate_minutes` | INTEGER | ○ | 生成するサブタスクの目安時間（`ck_templates_estimate`） |
+
+- NULL は未設定。親の目安とサブタスクの合計は別々に持ち、比べるのは画面で行う（合計を親に自動で入れることはしない）
+
 ### 3.4 サブタスクの入れ子をDBで禁止する仕組み
 
 - サブタスクの行は、`(parent_id, parent_level)` = `(親のID, 0)` で親を参照する
@@ -159,3 +169,4 @@ recurrence_rules 1 ──── 0..* rule_subtask_templates
 | 2026-10-14 | 1.0 | 初版 |
 | 2026-10-15 | 1.1 | Phase 2 の実装に合わせて、`Task` の親を関連ではなく `parentId` で持つ形に変更 |
 | 2026-10-19 | 1.2 | エリア（3.5 `areas`、`tasks.area_id`、`recurrence_rules.area_id`）を追加 |
+| 2026-10-21 | 1.3 | 目安時間（3.6、3テーブルの `estimate_minutes`）を追加 |

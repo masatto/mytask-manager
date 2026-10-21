@@ -41,7 +41,7 @@ public class PlanImportService {
 
     /** 入力を解釈した結果。親1件とそのサブタスク */
     private record ParsedTask(String title, String memo, LocalDate dueDate, LocalTime dueTime, Priority priority,
-            boolean done, List<ParsedTask> subtasks) {
+            boolean done, Integer estimateMinutes, List<ParsedTask> subtasks) {
     }
 
     @Transactional
@@ -64,8 +64,10 @@ public class PlanImportService {
             }
             rows.add(new PlanImportResponse.Row(
                     duplicate ? Action.SKIP_DUPLICATE : Action.CREATE,
-                    id, p.title(), p.dueDate(), p.dueTime(), p.priority(), p.done(),
-                    p.subtasks().stream().map(s -> new PlanImportResponse.SubRow(s.title(), s.done())).toList()));
+                    id, p.title(), p.dueDate(), p.dueTime(), p.priority(), p.done(), p.estimateMinutes(),
+                    p.subtasks().stream()
+                            .map(s -> new PlanImportResponse.SubRow(s.title(), s.done(), s.estimateMinutes()))
+                            .toList()));
         }
         return new PlanImportResponse(created, rows.size() - created, rows);
     }
@@ -94,6 +96,7 @@ public class PlanImportService {
     private static Task newTask(ParsedTask p, Long parentId, Long areaId, Instant now) {
         Task task = Task.create(p.title(), p.memo(), p.dueDate(), p.dueTime(), p.priority(), parentId, now);
         task.setAreaId(areaId);
+        task.setEstimateMinutes(p.estimateMinutes());
         return task;
     }
 
@@ -111,10 +114,10 @@ public class PlanImportService {
             for (int j = 0; j < subs.size(); j++) {
                 PlanImportRequest.PlanSubtask s = subs.get(j);
                 subtasks.add(parseOne(path + ".subtasks[" + j + "]", s.title(), s.memo(), s.dueDate(), s.dueTime(),
-                        s.priority(), s.done(), List.of(), errors));
+                        s.priority(), s.done(), s.estimateMinutes(), List.of(), errors));
             }
             result.add(parseOne(path, t.title(), t.memo(), t.dueDate(), t.dueTime(), t.priority(), t.done(),
-                    subtasks, errors));
+                    t.estimateMinutes(), subtasks, errors));
         }
         if (!errors.isEmpty()) {
             throw ApiException.validation(errors);
@@ -123,7 +126,8 @@ public class PlanImportService {
     }
 
     private static ParsedTask parseOne(String path, String title, String memo, String dueDate, String dueTime,
-            String priority, Boolean done, List<ParsedTask> subtasks, List<ApiError.FieldError> errors) {
+            String priority, Boolean done, Integer estimateMinutes, List<ParsedTask> subtasks,
+            List<ApiError.FieldError> errors) {
         LocalDate date = null;
         if (dueDate != null) {
             try {
@@ -152,6 +156,7 @@ public class PlanImportService {
             }
         }
         String cleanMemo = memo == null || memo.isBlank() ? null : memo;
-        return new ParsedTask(title.strip(), cleanMemo, date, time, prio, Boolean.TRUE.equals(done), subtasks);
+        return new ParsedTask(title.strip(), cleanMemo, date, time, prio, Boolean.TRUE.equals(done), estimateMinutes,
+                subtasks);
     }
 }

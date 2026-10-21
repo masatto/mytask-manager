@@ -10,6 +10,7 @@ import { AreaRadioGroup } from '../areas/AreaRadioGroup.tsx'
 import { fromAreaField, toAreaField } from '../areas/areaField.ts'
 import { useCreateRule, useDeleteRule, useRulePreview, useUpdateRule } from '../hooks/useRules.ts'
 import { formatDate, todayKey } from '../lib/date.ts'
+import { estimateMinutesOf, estimateText, formatEstimate, parseEstimate } from '../lib/estimate.ts'
 import { LAST_DAY, WEEKDAYS, WEEKDAY_LABELS, weekdayOf } from '../lib/recurrence.ts'
 import { useToast } from '../toast/useToast.ts'
 import { ConfirmDialog } from './ConfirmDialog.tsx'
@@ -39,11 +40,14 @@ const schema = z
     endDate: z.string(),
     /** '' は未分類 */
     areaId: z.string(),
+    /** 「90」「1h30m」などの入力（'' は未設定） */
+    estimate: estimateText,
     subtaskTemplates: z
       .array(
         z.object({
           title: z.string().trim().min(1, 'タイトルを入力してください').max(200, '200文字以内で入力してください'),
           priority: z.enum(PRIORITIES),
+          estimate: estimateText,
         }),
       )
       .max(MAX_TEMPLATES, `サブタスクのひな形は${MAX_TEMPLATES}件までです`),
@@ -77,6 +81,7 @@ function toFormValues(rule: Rule | null, defaultAreaId: number | null = null): F
       startDate: today,
       endDate: '',
       areaId: toAreaField(defaultAreaId),
+      estimate: '',
       subtaskTemplates: [],
     }
   }
@@ -91,7 +96,12 @@ function toFormValues(rule: Rule | null, defaultAreaId: number | null = null): F
     startDate: rule.startDate,
     endDate: rule.endDate ?? '',
     areaId: toAreaField(rule.areaId),
-    subtaskTemplates: rule.subtaskTemplates,
+    estimate: formatEstimate(rule.estimateMinutes),
+    subtaskTemplates: rule.subtaskTemplates.map((t) => ({
+      title: t.title,
+      priority: t.priority,
+      estimate: formatEstimate(t.estimateMinutes),
+    })),
   }
 }
 
@@ -113,8 +123,13 @@ function toInput(v: FormOutput, active: boolean): RuleInput {
     startDate: v.startDate,
     endDate: v.endDate === '' ? null : v.endDate,
     active,
-    subtaskTemplates: v.subtaskTemplates,
+    subtaskTemplates: v.subtaskTemplates.map((t) => ({
+      title: t.title,
+      priority: t.priority,
+      estimateMinutes: estimateMinutesOf(t.estimate),
+    })),
     areaId: fromAreaField(v.areaId),
+    estimateMinutes: estimateMinutesOf(v.estimate),
   }
 }
 
@@ -135,6 +150,7 @@ export function RuleForm({ rule, onClose, onCreated, onDeleted, onDirtyChange }:
     handleSubmit,
     reset,
     setError,
+    setValue,
     formState: { errors, isDirty },
   } = useForm<FormValues, unknown, FormOutput>({
     resolver: zodResolver(schema),
@@ -172,8 +188,10 @@ export function RuleForm({ rule, onClose, onCreated, onDeleted, onDirtyChange }:
   const handleError = (error: Error) => {
     if (error instanceof ApiRequestError && error.fieldErrors.length > 0) {
       for (const fe of error.fieldErrors) {
-        // サーバーの pattern.daysOfWeek / pattern.dayOfMonth はフォームの daysOfWeek / dayOfMonth に対応する
-        setError(fe.field.replace(/^pattern\./, '') as keyof FormValues, { message: fe.message })
+        // サーバーの pattern.daysOfWeek / pattern.dayOfMonth はフォームの daysOfWeek / dayOfMonth に対応する。
+        // estimateMinutes（ひな形のものも）はフォームでは estimate
+        const field = fe.field.replace(/^pattern\./, '').replace(/estimateMinutes$/, 'estimate')
+        setError(field as keyof FormValues, { message: fe.message })
       }
     } else {
       showToast({ message: '保存できませんでした' })
@@ -222,6 +240,14 @@ export function RuleForm({ rule, onClose, onCreated, onDeleted, onDirtyChange }:
   }
 
   const saving = createRule.isPending || updateRule.isPending
+
+  /** 「90」と打って離れたら「1h30m」に整える（読めない入力はそのまま残してエラーを出す） */
+  const tidyEstimate = (name: 'estimate' | `subtaskTemplates.${number}.estimate`, value: string) => {
+    const parsed = parseEstimate(value)
+    if (parsed.ok) {
+      setValue(name, formatEstimate(parsed.minutes), { shouldValidate: true })
+    }
+  }
 
   return (
     <form className={formStyles.form} onSubmit={handleSubmit(onSubmit)} noValidate>
@@ -272,6 +298,21 @@ export function RuleForm({ rule, onClose, onCreated, onDeleted, onDirtyChange }:
               </label>
             ))}
           </div>
+        </dd>
+
+        <dt>
+          <label htmlFor="rule-estimate">目安時間</label>
+        </dt>
+        <dd className={styles.inline}>
+          <input
+            id="rule-estimate"
+            className={`${formStyles.input} ${formStyles.estimateInput}`}
+            placeholder="例：20、1h30m"
+            aria-invalid={errors.estimate ? true : undefined}
+            {...register('estimate', { onBlur: (e) => tidyEstimate('estimate', e.target.value) })}
+          />
+          <span className={styles.hint}>（任意）</span>
+          {errors.estimate && <p className={formStyles.fieldError}>{errors.estimate.message}</p>}
         </dd>
 
         <dt>
@@ -365,6 +406,15 @@ export function RuleForm({ rule, onClose, onCreated, onDeleted, onDirtyChange }:
                 aria-label={`ひな形${index + 1}のタイトル`}
                 aria-invalid={errors.subtaskTemplates?.[index]?.title ? true : undefined}
               />
+              <input
+                className={`${formStyles.input} ${styles.templateEstimate}`}
+                placeholder="目安"
+                {...register(`subtaskTemplates.${index}.estimate`, {
+                  onBlur: (e) => tidyEstimate(`subtaskTemplates.${index}.estimate`, e.target.value),
+                })}
+                aria-label={`ひな形${index + 1}の目安時間`}
+                aria-invalid={errors.subtaskTemplates?.[index]?.estimate ? true : undefined}
+              />
               <select
                 className={formStyles.select}
                 {...register(`subtaskTemplates.${index}.priority`)}
@@ -389,6 +439,11 @@ export function RuleForm({ rule, onClose, onCreated, onDeleted, onDirtyChange }:
                   {errors.subtaskTemplates[index].title.message}
                 </p>
               )}
+              {errors.subtaskTemplates?.[index]?.estimate && (
+                <p className={`${formStyles.fieldError} ${styles.templateError}`}>
+                  {errors.subtaskTemplates[index].estimate.message}
+                </p>
+              )}
             </li>
           ))}
         </ul>
@@ -396,7 +451,7 @@ export function RuleForm({ rule, onClose, onCreated, onDeleted, onDirtyChange }:
           <button
             type="button"
             className={styles.addTemplate}
-            onClick={() => templates.append({ title: '', priority: 'MEDIUM' })}
+            onClick={() => templates.append({ title: '', priority: 'MEDIUM', estimate: '' })}
           >
             ＋ 追加
           </button>

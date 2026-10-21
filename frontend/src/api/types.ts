@@ -17,6 +17,8 @@ export type Task = {
   recurrence: { ruleId: number | null; ruleTitle: string | null; occurrenceDate: string } | null
   /** エリア（null は未分類）。サブタスクは親と同じ */
   areaId: number | null
+  /** 目安時間（分。null は未設定） */
+  estimateMinutes: number | null
   createdAt: string
   updatedAt: string
 }
@@ -66,6 +68,7 @@ export type TaskCreateInput = {
   parentId?: number
   /** サブタスクでは使わない（親のエリアに入る） */
   areaId?: number | null
+  estimateMinutes?: number | null
 }
 
 export type TaskUpdateInput = {
@@ -77,6 +80,8 @@ export type TaskUpdateInput = {
   status: TaskStatus
   /** 全項目を送るので、変えないときも今の値を入れる（サブタスクでは使わない） */
   areaId: number | null
+  /** 全項目を送るので、変えないときも今の値を入れる（送らないと未設定に戻る） */
+  estimateMinutes: number | null
 }
 
 export const PRIORITY_LABELS: Record<Priority, string> = {
@@ -103,7 +108,7 @@ export type Pattern = {
   dayOfMonth: number | null
 }
 
-export type SubtaskTemplate = { title: string; priority: Priority }
+export type SubtaskTemplate = { title: string; priority: Priority; estimateMinutes: number | null }
 
 export type RuleInput = {
   title: string
@@ -117,6 +122,8 @@ export type RuleInput = {
   subtaskTemplates: SubtaskTemplate[]
   /** 生成するタスクのエリア（null は未分類） */
   areaId: number | null
+  /** 生成するタスクの目安時間（分） */
+  estimateMinutes: number | null
 }
 
 export type Rule = RuleInput & {

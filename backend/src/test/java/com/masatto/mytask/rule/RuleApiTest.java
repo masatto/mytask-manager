@@ -179,6 +179,24 @@ class RuleApiTest {
         }
 
         @Test
+        void 目安時間はルールとひな形から生成タスクにコピーされる() throws Exception {
+            long ruleId = createRule("""
+                    {"title":"単語暗記","priority":"MEDIUM","pattern":{"type":"DAILY"},"startDate":"2026-10-14",
+                     "estimateMinutes":20,"subtaskTemplates":[{"title":"復習","priority":"MEDIUM","estimateMinutes":5},
+                     {"title":"新しい単語","priority":"MEDIUM"}]}
+                    """);
+
+            mockMvc.perform(get("/api/rules/{id}", ruleId))
+                    .andExpect(jsonPath("$.estimateMinutes").value(20))
+                    .andExpect(jsonPath("$.subtaskTemplates[0].estimateMinutes").value(5))
+                    .andExpect(jsonPath("$.subtaskTemplates[1].estimateMinutes").doesNotExist());
+            tasks("today")
+                    .andExpect(jsonPath("$.items[0].task.estimateMinutes").value(20))
+                    .andExpect(jsonPath("$.items[0].subtasks[0].estimateMinutes").value(5))
+                    .andExpect(jsonPath("$.items[0].subtasks[1].estimateMinutes").doesNotExist());
+        }
+
+        @Test
         void 開始日が過去なら過去の直近の回が1件だけ生成される() throws Exception {
             createRule("""
                     {"title":"日報","priority":"MEDIUM","dueTime":"18:00","pattern":{"type":"DAILY"},"startDate":"2026-09-01"}

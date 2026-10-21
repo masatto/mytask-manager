@@ -297,6 +297,28 @@
   text-decoration: line-through;
 }
 
+.estimateInput {
+  width: 120px;
+}
+
+.estimateSum {
+  color: var(--color-text-sub);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.estimateOver {
+  color: var(--color-warning);
+  font-weight: 600;
+}
+
+.subtaskEstimate {
+  flex: none;
+  color: var(--color-text-sub);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
 .subtaskDue {
   flex: none;
   color: var(--color-text-sub);

@@ -102,6 +102,7 @@ export function useDuplicateTask() {
         dueDate: task.dueDate,
         dueTime: task.dueTime,
         priority: task.priority,
+        estimateMinutes: task.estimateMinutes,
         ...(task.parentId !== null ? { parentId: task.parentId } : { areaId: task.areaId }),
       })
       for (const sub of task.subtasks ?? []) {
@@ -111,6 +112,7 @@ export function useDuplicateTask() {
           dueDate: sub.dueDate,
           dueTime: sub.dueTime,
           priority: sub.priority,
+          estimateMinutes: sub.estimateMinutes,
           parentId: copy.id,
         })
       }

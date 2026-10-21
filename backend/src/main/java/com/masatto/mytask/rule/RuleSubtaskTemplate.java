@@ -42,15 +42,20 @@ public class RuleSubtaskTemplate {
     @Column(nullable = false, length = 10)
     private Priority priority;
 
-    RuleSubtaskTemplate(RecurrenceRule rule, int position, String title, Priority priority) {
+    /** 目安時間（分。null は未設定） */
+    private Integer estimateMinutes;
+
+    RuleSubtaskTemplate(RecurrenceRule rule, int position, String title, Priority priority, Integer estimateMinutes) {
         this.rule = rule;
         this.position = position;
         this.title = title;
         this.priority = priority;
+        this.estimateMinutes = estimateMinutes;
     }
 
-    void update(String title, Priority priority) {
+    void update(String title, Priority priority, Integer estimateMinutes) {
         this.title = title;
         this.priority = priority;
+        this.estimateMinutes = estimateMinutes;
     }
 }

@@ -14,6 +14,7 @@ const subtaskSchema = z.object({
   dueTime: optionalText,
   priority: optionalText,
   done: z.boolean().nullish(),
+  estimateMinutes: z.number({ error: 'estimateMinutes（目安時間）は分の数値にしてください' }).int('estimateMinutes（目安時間）は分の整数にしてください').nullish(),
 })
 
 const planSchema = z.object({

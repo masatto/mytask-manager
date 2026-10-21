@@ -18,6 +18,7 @@ import com.masatto.mytask.task.TaskStatus;
  * <ul>
  * <li>1：タスクとルール</li>
  * <li>2：エリアを追加（areas と、タスク・ルールの areaId）。1 を取り込むときはエリアを変えず、すべて未分類にする</li>
+ * <li>3：目安時間を追加（タスク・ルール・ひな形の estimateMinutes）。1・2 を取り込むときは未設定になる</li>
  * </ul>
  */
 public record BackupDocument(
@@ -29,7 +30,7 @@ public record BackupDocument(
         List<AreaData> areas) {
 
     public static final String FORMAT = "mytask-manager-backup";
-    public static final int VERSION = 2;
+    public static final int VERSION = 3;
 
     public record TaskData(
             Long id,
@@ -44,6 +45,7 @@ public record BackupDocument(
             Long recurrenceRuleId,
             LocalDate occurrenceDate,
             Long areaId,
+            Integer estimateMinutes,
             OffsetDateTime createdAt,
             OffsetDateTime updatedAt) {
     }
@@ -61,6 +63,7 @@ public record BackupDocument(
             LocalDate lastGeneratedDate,
             List<RuleRequest.Template> subtaskTemplates,
             Long areaId,
+            Integer estimateMinutes,
             OffsetDateTime createdAt,
             OffsetDateTime updatedAt) {
     }

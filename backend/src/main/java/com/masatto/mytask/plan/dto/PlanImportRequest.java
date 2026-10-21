@@ -3,6 +3,8 @@ package com.masatto.mytask.plan.dto;
 import java.util.List;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
@@ -23,6 +25,7 @@ public record PlanImportRequest(
             String dueTime,
             String priority,
             Boolean done,
+            @Min(value = 1, message = "目安時間は1〜9999分にしてください") @Max(value = 9999, message = "目安時間は1〜9999分にしてください") Integer estimateMinutes,
             @Size(max = 50, message = "サブタスクは50件までです") List<@Valid PlanSubtask> subtasks) {
     }
 
@@ -32,6 +35,7 @@ public record PlanImportRequest(
             String dueDate,
             String dueTime,
             String priority,
-            Boolean done) {
+            Boolean done,
+            @Min(value = 1, message = "目安時間は1〜9999分にしてください") @Max(value = 9999, message = "目安時間は1〜9999分にしてください") Integer estimateMinutes) {
     }
 }

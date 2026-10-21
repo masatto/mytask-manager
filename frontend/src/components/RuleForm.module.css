@@ -86,6 +86,11 @@
   min-width: 0;
 }
 
+.templateEstimate {
+  flex: none;
+  width: 72px;
+}
+
 .templateError {
   flex-basis: 100%;
 }

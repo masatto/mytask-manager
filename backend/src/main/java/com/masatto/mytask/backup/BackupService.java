@@ -76,7 +76,8 @@ public class BackupService {
     private BackupDocument.TaskData toData(Task t) {
         return new BackupDocument.TaskData(t.getId(), t.getTitle(), t.getMemo(), t.getDueDate(), t.getDueTime(),
                 t.getPriority(), t.getStatus(), offset(t.getCompletedAt()), t.getParentId(), t.getRecurrenceRuleId(),
-                t.getOccurrenceDate(), t.getAreaId(), offset(t.getCreatedAt()), offset(t.getUpdatedAt()));
+                t.getOccurrenceDate(), t.getAreaId(), t.getEstimateMinutes(), offset(t.getCreatedAt()),
+                offset(t.getUpdatedAt()));
     }
 
     private BackupDocument.RuleData toData(RecurrenceRule r) {
@@ -84,9 +85,9 @@ public class BackupService {
                 new PatternDto(r.getPatternType(), r.getDaysOfWeek(), r.getDayOfMonth()), r.getStartDate(),
                 r.getEndDate(), r.isActive(), r.getLastGeneratedDate(),
                 r.getSubtaskTemplates().stream()
-                        .map(t -> new RuleRequest.Template(t.getTitle(), t.getPriority()))
+                        .map(t -> new RuleRequest.Template(t.getTitle(), t.getPriority(), t.getEstimateMinutes()))
                         .toList(),
-                r.getAreaId(), offset(r.getCreatedAt()), offset(r.getUpdatedAt()));
+                r.getAreaId(), r.getEstimateMinutes(), offset(r.getCreatedAt()), offset(r.getUpdatedAt()));
     }
 
     private BackupDocument.AreaData toData(Area a) {
@@ -121,7 +122,7 @@ public class BackupService {
                 return new ImportSummary(current, new Counts(doc.tasks().size(), doc.rules().size()));
             });
         } catch (DataIntegrityViolationException e) {
-            throw invalid("データの内容が制約に違反しています（例：完了なのに完了日時がない、時刻だけの期限がある）");
+            throw invalid("データの内容が制約に違反しています（例：完了なのに完了日時がない、時刻だけの期限がある、目安時間が1〜9999分でない）");
         }
         if (!dryRun) {
             // 起動時と同じく、今日までに生成すべき回があれば生成する
@@ -245,16 +246,20 @@ public class BackupService {
         for (BackupDocument.RuleData r : doc.rules()) {
             jdbc.update("""
                     INSERT INTO recurrence_rules (id, title, memo, priority, due_time, pattern_type, days_of_week,
-                        day_of_month, start_date, end_date, active, last_generated_date, area_id, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        day_of_month, start_date, end_date, active, last_generated_date, area_id, estimate_minutes,
+                        created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, r.id(), r.title(), r.memo(), r.priority().name(), r.dueTime(), r.pattern().type().name(),
                     weekdays.convertToDatabaseColumn(r.pattern().daysOfWeek()), r.pattern().dayOfMonth(),
-                    r.startDate(), r.endDate(), r.active(), r.lastGeneratedDate(), areas ? r.areaId() : null, r.createdAt(),
-                    r.updatedAt());
+                    r.startDate(), r.endDate(), r.active(), r.lastGeneratedDate(), areas ? r.areaId() : null,
+                    r.estimateMinutes(), r.createdAt(), r.updatedAt());
             List<RuleRequest.Template> templates = Objects.requireNonNullElse(r.subtaskTemplates(), List.of());
             for (int i = 0; i < templates.size(); i++) {
-                jdbc.update("INSERT INTO rule_subtask_templates (rule_id, position, title, priority) VALUES (?, ?, ?, ?)",
-                        r.id(), i, templates.get(i).title(), templates.get(i).priority().name());
+                jdbc.update("""
+                        INSERT INTO rule_subtask_templates (rule_id, position, title, priority, estimate_minutes)
+                        VALUES (?, ?, ?, ?, ?)
+                        """, r.id(), i, templates.get(i).title(), templates.get(i).priority().name(),
+                        templates.get(i).estimateMinutes());
             }
         }
 
@@ -271,12 +276,13 @@ public class BackupService {
             boolean subtask = t.parentId() != null;
             jdbc.update("""
                     INSERT INTO tasks (id, title, memo, due_date, due_time, priority, status, completed_at, parent_id,
-                        level, parent_level, recurrence_rule_id, occurrence_date, area_id, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        level, parent_level, recurrence_rule_id, occurrence_date, area_id, estimate_minutes,
+                        created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, t.id(), t.title(), t.memo(), t.dueDate(), t.dueTime(), t.priority().name(), t.status().name(),
                     t.completedAt(), t.parentId(), subtask ? 1 : 0, subtask ? 0 : null,
                     t.recurrenceRuleId(), t.occurrenceDate(), areaByTask.get(subtask ? t.parentId() : t.id()),
-                    t.createdAt(), t.updatedAt());
+                    t.estimateMinutes(), t.createdAt(), t.updatedAt());
         }
     }
 

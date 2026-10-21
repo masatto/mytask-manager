@@ -98,6 +98,33 @@ class PlanImportApiTest {
     }
 
     @Test
+    void 目安時間を親とサブタスクに登録する() throws Exception {
+        String body = importPlan("""
+                {"tasks":[{"title":"Step1","estimateMinutes":480,
+                  "subtasks":[{"title":"読む","estimateMinutes":90},{"title":"書く"}]}]}
+                """, false)
+                .andExpect(jsonPath("$.tasks[0].estimateMinutes").value(480))
+                .andExpect(jsonPath("$.tasks[0].subtasks[0].estimateMinutes").value(90))
+                .andReturn().getResponse().getContentAsString();
+        long id = ((Number) JsonPath.read(body, "$.tasks[0].id")).longValue();
+
+        mockMvc.perform(get("/api/tasks/{id}", id))
+                .andExpect(jsonPath("$.estimateMinutes").value(480))
+                .andExpect(jsonPath("$.subtasks[0].estimateMinutes").value(90))
+                .andExpect(jsonPath("$.subtasks[1].estimateMinutes").value(nullValue()));
+    }
+
+    @Test
+    void 目安時間が範囲外なら項目ごとに400() throws Exception {
+        importPlan("""
+                {"tasks":[{"title":"Step1","estimateMinutes":0,"subtasks":[{"title":"読む","estimateMinutes":10000}]}]}
+                """, false)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors[*].field",
+                        containsInAnyOrder("tasks[0].estimateMinutes", "tasks[0].subtasks[0].estimateMinutes")));
+    }
+
+    @Test
     void 完了の親はサブタスクもすべて完了にする() throws Exception {
         String body = importPlan("""
                 {"tasks":[{"title":"終わった作業","done":true,"subtasks":[{"title":"a"},{"title":"b"}]}]}

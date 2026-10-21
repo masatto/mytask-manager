@@ -381,4 +381,52 @@ class TaskApiTest {
                     .andExpect(jsonPath("$.code").value("NOT_FOUND"));
         }
     }
+
+    @Nested
+    class 目安時間 {
+
+        @Test
+        void 親とサブタスクに設定でき_詳細で返る() throws Exception {
+            long parentId = createTask("""
+                    {"title":"親","estimateMinutes":480}
+                    """);
+            createTask("""
+                    {"title":"子","parentId":%d,"estimateMinutes":90}
+                    """.formatted(parentId));
+
+            mockMvc.perform(get("/api/tasks/{id}", parentId))
+                    .andExpect(jsonPath("$.estimateMinutes").value(480))
+                    .andExpect(jsonPath("$.subtasks[0].estimateMinutes").value(90));
+        }
+
+        @Test
+        void 省略すると未設定になり_更新で送らなければ消える() throws Exception {
+            long id = createTask("""
+                    {"title":"t","estimateMinutes":60}
+                    """);
+
+            mockMvc.perform(put("/api/tasks/{id}", id).contentType(MediaType.APPLICATION_JSON).content("""
+                    {"title":"t","priority":"MEDIUM","status":"TODO","estimateMinutes":120}
+                    """))
+                    .andExpect(jsonPath("$.estimateMinutes").value(120));
+            mockMvc.perform(put("/api/tasks/{id}", id).contentType(MediaType.APPLICATION_JSON).content("""
+                    {"title":"t","priority":"MEDIUM","status":"TODO"}
+                    """))
+                    .andExpect(jsonPath("$.estimateMinutes").value(nullValue()));
+        }
+
+        @Test
+        void 範囲外は400() throws Exception {
+            postTask("""
+                    {"title":"t","estimateMinutes":0}
+                    """)
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.fieldErrors[0].field").value("estimateMinutes"));
+            postTask("""
+                    {"title":"t","estimateMinutes":10000}
+                    """)
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.fieldErrors[0].field").value("estimateMinutes"));
+        }
+    }
 }
