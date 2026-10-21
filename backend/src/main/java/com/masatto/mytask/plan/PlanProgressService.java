@@ -1,6 +1,7 @@
 package com.masatto.mytask.plan;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -17,10 +18,12 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.masatto.mytask.common.ApiException;
 import com.masatto.mytask.plan.dto.PlanProgressResponse;
 import com.masatto.mytask.plan.dto.PlanProgressResponse.Plan;
 import com.masatto.mytask.plan.dto.PlanProgressResponse.PlanState;
 import com.masatto.mytask.plan.dto.PlanProgressResponse.Step;
+import com.masatto.mytask.plan.dto.SubtaskScheduleResponse;
 import com.masatto.mytask.task.Estimates;
 import com.masatto.mytask.task.Task;
 import com.masatto.mytask.task.TaskRepository;
@@ -116,8 +119,7 @@ public class PlanProgressService {
     }
 
     private static Plan toPlan(List<StepTask> stepTasks, Map<Long, List<Task>> subtasksByParent, LocalDate today) {
-        List<Step> steps = stepTasks.stream()
-                .sorted(Comparator.comparingInt((StepTask s) -> s.title().number()).thenComparing(s -> s.task().getId()))
+        List<Step> steps = sortedByNumber(stepTasks).stream()
                 .map(s -> toStep(s, subtasksByParent.getOrDefault(s.task().getId(), List.of()), today))
                 .toList();
 
@@ -137,19 +139,86 @@ public class PlanProgressService {
                 .orElse(null);
         Integer daysLeft = finalDueDate == null ? null : daysLeft(today, finalDueDate);
         Long nextStepId = steps.stream().filter(s -> !isDone(s)).map(Step::id).findFirst().orElse(null);
+        int unscheduled = stepTasks.stream()
+                .mapToInt(s -> unscheduledSubtasks(s.task(), subtasksByParent.getOrDefault(s.task().getId(), List.of()))
+                        .size())
+                .sum();
 
         return new Plan(stepTasks.getFirst().title().planName(), stepTasks.getFirst().task().getAreaId(), state,
                 steps.size(), doneSteps, overdueSteps, totalMinutes, remainingMinutes, finalDueDate, daysLeft,
-                weeklyMinutesNeeded(state, remainingMinutes, daysLeft), nextStepId, steps);
+                weeklyMinutesNeeded(state, remainingMinutes, daysLeft), nextStepId, unscheduled, steps);
     }
 
     private static Step toStep(StepTask stepTask, List<Task> subtasks, LocalDate today) {
         Task task = stepTask.task();
-        boolean overdue = !task.isDone() && task.getDueDate() != null && task.getDueDate().isBefore(today);
+        int overdueSubtasks = task.isDone() ? 0 : (int) subtasks.stream().filter(s -> isOverdue(s, today)).count();
+        boolean overdue = isOverdue(task, today) || overdueSubtasks > 0;
         int subtasksDone = (int) subtasks.stream().filter(Task::isDone).count();
         return new Step(task.getId(), task.getTitle(), stepTask.title().number(), task.getStatus(), task.getDueDate(),
                 overdue, Estimates.total(task, subtasks), Estimates.remaining(task, subtasks), subtasksDone,
-                subtasks.size());
+                subtasks.size(), overdueSubtasks);
+    }
+
+    /** 期限（日付）を過ぎた未完了のタスク。今日が期限のものはまだ遅れではない */
+    private static boolean isOverdue(Task task, LocalDate today) {
+        return !task.isDone() && task.getDueDate() != null && task.getDueDate().isBefore(today);
+    }
+
+    /** 期限を割り振れるサブタスク：期限のある未完了のステップの下で、期限のない未完了のもの（作成順） */
+    private static List<Task> unscheduledSubtasks(Task step, List<Task> subtasks) {
+        if (step.isDone() || step.getDueDate() == null) {
+            return List.of();
+        }
+        return subtasks.stream().filter(s -> !s.isDone() && s.getDueDate() == null).toList();
+    }
+
+    // ---- サブタスクの期限の割り振り（api-design 11.2） ----------------------------------
+
+    /**
+     * 計画のステップを番号順にたどり、期限のないサブタスクへ、そのステップの期間の中で期限を割り振る。
+     * 期間は「前のステップの期限の翌日（過ぎていれば今日。前のステップが完了していれば今日）」から「そのステップの期限」まで。
+     * 期限が付いているサブタスクと、完了したサブタスク・ステップには触れない。
+     */
+    @Transactional
+    public SubtaskScheduleResponse scheduleSubtasks(String planName, boolean dryRun) {
+        String name = planName == null ? "" : planName.strip();
+        List<StepTask> stepTasks = stepsByPlanName(null).getOrDefault(name, List.of());
+        if (stepTasks.size() < MIN_STEPS) {
+            throw ApiException.notFound("計画が見つかりません");
+        }
+        Map<Long, List<Task>> subtasksByParent = subtasksOf(Map.of(name, stepTasks));
+        LocalDate today = LocalDate.now(clock);
+        Instant now = Instant.now(clock);
+
+        List<SubtaskScheduleResponse.Item> items = new ArrayList<>();
+        LocalDate previousDue = null;
+        for (StepTask stepTask : sortedByNumber(stepTasks)) {
+            Task step = stepTask.task();
+            List<Task> targets = unscheduledSubtasks(step, subtasksByParent.getOrDefault(step.getId(), List.of()));
+            List<LocalDate> dates = SubtaskScheduler.spread(SubtaskScheduler.windowStart(previousDue, today),
+                    step.getDueDate(), targets.stream().map(Task::getEstimateMinutes).toList());
+            for (int i = 0; i < targets.size(); i++) {
+                Task sub = targets.get(i);
+                items.add(new SubtaskScheduleResponse.Item(sub.getId(), sub.getTitle(), step.getId(), dates.get(i)));
+                if (!dryRun) {
+                    sub.setDue(dates.get(i), null);
+                    sub.touch(now);
+                }
+            }
+            // 完了したステップの期限は次の期間を縛らない（早く終わったなら、次は今日から始められる）
+            if (step.isDone()) {
+                previousDue = null;
+            } else if (step.getDueDate() != null) {
+                previousDue = step.getDueDate();
+            }
+        }
+        return new SubtaskScheduleResponse(items.size(), items);
+    }
+
+    private static List<StepTask> sortedByNumber(List<StepTask> stepTasks) {
+        return stepTasks.stream()
+                .sorted(Comparator.comparingInt((StepTask s) -> s.title().number()).thenComparing(s -> s.task().getId()))
+                .toList();
     }
 
     private static PlanState stateOf(int totalSteps, int doneSteps, int overdueSteps) {

@@ -42,7 +42,7 @@ const PREVIEW = {
       done: false,
       subtasks: [
         { title: '環境を作る', done: true },
-        { title: '型を書く', done: false },
+        { title: '型を書く', done: false, estimateMinutes: null, dueDate: '2026-10-20', scheduled: true },
       ],
     },
     {
@@ -108,7 +108,12 @@ describe('S6 計画の取り込み', () => {
     expect(items[1]).toHaveTextContent('同じタイトルのタスクがあります')
     // 大文字小文字が違っても、今あるエリアに当てはめる
     expect(screen.getByLabelText('登録先のエリア')).toHaveValue('3')
-    expect(requests.find((r) => r.path === '/plan-import?dryRun=true')?.body).toMatchObject({ areaId: 3 })
+    expect(requests.find((r) => r.path === '/plan-import?dryRun=true')?.body).toMatchObject({
+      areaId: 3,
+      scheduleSubtasks: true,
+    })
+    // 期限のないサブタスクには、取り込むときに割り振った期限を「（自動）」付きで見せる
+    expect(items[0]).toHaveTextContent('型を書く10/20(火)（自動）')
 
     await user.selectOptions(screen.getByLabelText('登録先のエリア'), '未分類')
     await user.click(screen.getByRole('button', { name: '1件を登録' }))
@@ -153,6 +158,26 @@ describe('S6 計画の取り込み', () => {
     expect(screen.queryByRole('list', { name: '登録する内容' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '内容を確認' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('tasks[0].dueDate：日付は YYYY-MM-DD で指定してください')
+  })
+
+  test('サブタスクの期限の割り振りは外せる', async () => {
+    const { requests } = installFakeApi({
+      'GET /tasks/counts': () => EMPTY_COUNTS,
+      'GET /areas': () => AREAS,
+      'POST /plan-import?dryRun=true': () => ({ status: 200, body: PREVIEW }),
+    })
+    renderApp('/plan')
+    const user = userEvent.setup()
+
+    const checkbox = await screen.findByRole('checkbox', { name: /期限のないサブタスクにも期限を割り振る/ })
+    expect(checkbox).toBeChecked()
+    await user.click(checkbox)
+    await user.click(screen.getByLabelText(/コードブロックの前後/))
+    await user.paste(PLAN_TEXT)
+    await user.click(screen.getByRole('button', { name: '内容を確認' }))
+
+    await screen.findByRole('list', { name: '登録する内容' })
+    expect(requests.find((r) => r.path === '/plan-import?dryRun=true')?.body).toMatchObject({ scheduleSubtasks: false })
   })
 
   test('プロンプトに今あるエリアを入れてコピーできる', async () => {

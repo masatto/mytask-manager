@@ -39,15 +39,27 @@ public class PlanImportService {
     private final AreaService areaService;
     private final Clock clock;
 
-    /** 入力を解釈した結果。親1件とそのサブタスク */
+    /** 入力を解釈した結果。親1件とそのサブタスク。scheduled は期限を自動で割り振ったサブタスク */
     private record ParsedTask(String title, String memo, LocalDate dueDate, LocalTime dueTime, Priority priority,
-            boolean done, Integer estimateMinutes, List<ParsedTask> subtasks) {
+            boolean done, Integer estimateMinutes, List<ParsedTask> subtasks, boolean scheduled) {
+
+        ParsedTask withSubtasks(List<ParsedTask> newSubtasks) {
+            return new ParsedTask(title, memo, dueDate, dueTime, priority, done, estimateMinutes, newSubtasks,
+                    scheduled);
+        }
+
+        ParsedTask scheduledOn(LocalDate date) {
+            return new ParsedTask(title, memo, date, null, priority, done, estimateMinutes, subtasks, true);
+        }
     }
 
     @Transactional
     public PlanImportResponse importPlan(PlanImportRequest request, boolean dryRun) {
         areaService.checkExists(request.areaId(), "areaId");
         List<ParsedTask> parsed = parse(request);
+        if (!Boolean.FALSE.equals(request.scheduleSubtasks())) {
+            parsed = scheduleSubtasks(parsed, LocalDate.now(clock));
+        }
 
         Instant now = Instant.now(clock);
         Set<String> seen = new HashSet<>();
@@ -66,7 +78,8 @@ public class PlanImportService {
                     duplicate ? Action.SKIP_DUPLICATE : Action.CREATE,
                     id, p.title(), p.dueDate(), p.dueTime(), p.priority(), p.done(), p.estimateMinutes(),
                     p.subtasks().stream()
-                            .map(s -> new PlanImportResponse.SubRow(s.title(), s.done(), s.estimateMinutes()))
+                            .map(s -> new PlanImportResponse.SubRow(s.title(), s.done(), s.estimateMinutes(),
+                                    s.dueDate(), s.scheduled()))
                             .toList()));
         }
         return new PlanImportResponse(created, rows.size() - created, rows);
@@ -98,6 +111,47 @@ public class PlanImportService {
         task.setAreaId(areaId);
         task.setEstimateMinutes(p.estimateMinutes());
         return task;
+    }
+
+    // ---- サブタスクの期限の割り振り（api-design 11.2） ----------------------------------
+
+    /**
+     * 期限のある未完了の親ごとに、期限も完了も無いサブタスクへ期限を割り振る。
+     * 期間は計画の並び順で「前の親の期限の翌日」から（最初の親は今日から）その親の期限まで。
+     */
+    private static List<ParsedTask> scheduleSubtasks(List<ParsedTask> tasks, LocalDate today) {
+        List<ParsedTask> result = new ArrayList<>();
+        LocalDate previousDue = null;
+        for (ParsedTask task : tasks) {
+            boolean target = task.dueDate() != null && !task.done();
+            result.add(target ? task.withSubtasks(scheduled(task, SubtaskScheduler.windowStart(previousDue, today)))
+                    : task);
+            // 完了の親の期限は次の期間を縛らない（終わっているなら、次は今日から始められる）
+            if (task.done()) {
+                previousDue = null;
+            } else if (task.dueDate() != null) {
+                previousDue = task.dueDate();
+            }
+        }
+        return result;
+    }
+
+    private static List<ParsedTask> scheduled(ParsedTask parent, LocalDate start) {
+        List<Integer> targetIndexes = new ArrayList<>();
+        for (int i = 0; i < parent.subtasks().size(); i++) {
+            ParsedTask sub = parent.subtasks().get(i);
+            if (sub.dueDate() == null && !sub.done()) {
+                targetIndexes.add(i);
+            }
+        }
+        List<LocalDate> dates = SubtaskScheduler.spread(start, parent.dueDate(),
+                targetIndexes.stream().map(i -> parent.subtasks().get(i).estimateMinutes()).toList());
+        List<ParsedTask> subtasks = new ArrayList<>(parent.subtasks());
+        for (int k = 0; k < targetIndexes.size(); k++) {
+            int i = targetIndexes.get(k);
+            subtasks.set(i, subtasks.get(i).scheduledOn(dates.get(k)));
+        }
+        return subtasks;
     }
 
     // ---- 入力の解釈 -----------------------------------------------------------
@@ -157,6 +211,6 @@ public class PlanImportService {
         }
         String cleanMemo = memo == null || memo.isBlank() ? null : memo;
         return new ParsedTask(title.strip(), cleanMemo, date, time, prio, Boolean.TRUE.equals(done), estimateMinutes,
-                subtasks);
+                subtasks, false);
     }
 }

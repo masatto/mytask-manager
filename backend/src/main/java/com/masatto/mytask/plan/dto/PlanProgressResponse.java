@@ -14,7 +14,7 @@ public record PlanProgressResponse(List<Plan> items) {
     public enum PlanState {
         /** すべてのステップが完了 */
         DONE,
-        /** 期限を過ぎた未完了のステップがある */
+        /** 期限を過ぎた未完了のステップ（またはその中のサブタスク）がある */
         BEHIND,
         /** 期限を過ぎた未完了のステップがない */
         ON_TRACK
@@ -28,6 +28,7 @@ public record PlanProgressResponse(List<Plan> items) {
      * @param weeklyMinutesNeeded 残りの目安を最終期限までに終えるのに必要な1週間あたりの時間（分）。
      *                            最終期限が過ぎている・目安がない・完了済みなら null
      * @param nextStepId 次にやるステップ（未完了で番号が一番小さいもの）
+     * @param unscheduledSubtasks 期限を割り振れる（期限のある未完了のステップの下で、期限のない未完了の）サブタスクの数
      */
     public record Plan(
             String name,
@@ -42,12 +43,15 @@ public record PlanProgressResponse(List<Plan> items) {
             Integer daysLeft,
             Integer weeklyMinutesNeeded,
             Long nextStepId,
+            int unscheduledSubtasks,
             List<Step> steps) {
     }
 
     /**
      * @param estimateMinutes ステップ全体の目安（サブタスクに目安があればその合計、なければ親の目安）
      * @param remainingMinutes 残りの目安（完了なら 0）
+     * @param overdue 親の期限を過ぎているか、期限を過ぎた未完了のサブタスクがある（未完了のステップのみ）
+     * @param overdueSubtasks 期限を過ぎた未完了のサブタスクの数
      */
     public record Step(
             Long id,
@@ -59,6 +63,7 @@ public record PlanProgressResponse(List<Plan> items) {
             Integer estimateMinutes,
             Integer remainingMinutes,
             int subtasksDone,
-            int subtasksTotal) {
+            int subtasksTotal,
+            int overdueSubtasks) {
     }
 }

@@ -31,6 +31,7 @@ public record PlanImportResponse(int created, int skipped, List<Row> tasks) {
             List<SubRow> subtasks) {
     }
 
-    public record SubRow(String title, boolean done, Integer estimateMinutes) {
+    /** @param scheduled 期限を自動で割り振ったか（AI の JSON に期限が無かったもの） */
+    public record SubRow(String title, boolean done, Integer estimateMinutes, LocalDate dueDate, boolean scheduled) {
     }
 }

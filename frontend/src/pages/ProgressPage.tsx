@@ -1,11 +1,15 @@
-import type { Plan, PlanState, PlanStep } from '../api/plans.ts'
+import { useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { scheduleSubtasks, type Plan, type PlanState, type PlanStep, type SubtaskSchedule } from '../api/plans.ts'
 import { AreaBadge } from '../areas/AreaBadge.tsx'
 import { useAreas } from '../areas/useAreas.ts'
+import { ConfirmDialog } from '../components/ConfirmDialog.tsx'
 import { PageTitle } from '../components/PageTitle.tsx'
 import { usePlans } from '../hooks/usePlans.ts'
 import { useTaskPanel } from '../hooks/useTaskPanel.tsx'
 import { formatDate } from '../lib/date.ts'
 import { formatEstimate } from '../lib/estimate.ts'
+import { useToast } from '../toast/useToast.ts'
 import { PAGE_TITLES } from '../views.ts'
 import listStyles from './TaskListPage.module.css'
 import styles from './ProgressPage.module.css'
@@ -92,6 +96,8 @@ function PlanCard({ plan, selectedId, onOpen }: PlanCardProps) {
       </div>
 
       <PlanStats plan={plan} />
+
+      {plan.state !== 'DONE' && plan.unscheduledSubtasks > 0 && <ScheduleSubtasks plan={plan} />}
 
       {next && (
         <p className={styles.next}>
@@ -187,6 +193,7 @@ function StepRow({ step, selected, onOpen }: StepRowProps) {
       {step.subtasksTotal > 0 && (
         <span className={styles.meta}>
           ✓ {step.subtasksDone}/{step.subtasksTotal}
+          {step.overdueSubtasks > 0 && <span className={styles.overdue}>（遅れ {step.overdueSubtasks}）</span>}
         </span>
       )}
       <span className={styles.meta}>{stepEstimateLabel(step)}</span>
@@ -194,5 +201,66 @@ function StepRow({ step, selected, onOpen }: StepRowProps) {
         {step.dueDate ? formatDate(step.dueDate) : ''}
       </span>
     </li>
+  )
+}
+
+/**
+ * 期限のないサブタスクへの期限の割り振り（screen-design 8.5）。サブタスクに期限が無いと、
+ * 遅れていても親の期限を過ぎるまで「遅れ」にならないので、割り振りを勧める。
+ * まず割り振る内容を確かめ（dryRun）、確認ダイアログで最初と最後の日を見せてから割り振る。
+ */
+function ScheduleSubtasks({ plan }: { plan: Plan }) {
+  const queryClient = useQueryClient()
+  const { showToast } = useToast()
+  const [pending, setPending] = useState<SubtaskSchedule | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const preview = async () => {
+    setBusy(true)
+    try {
+      setPending(await scheduleSubtasks(plan.name, true))
+    } catch {
+      showToast({ message: '割り振りを確認できませんでした' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const apply = async () => {
+    setPending(null)
+    setBusy(true)
+    try {
+      const result = await scheduleSubtasks(plan.name, false)
+      await queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      showToast({ message: `サブタスク ${result.count}件に期限を割り振りました` })
+    } catch {
+      showToast({ message: '期限を割り振れませんでした' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const first = pending?.subtasks[0]?.dueDate
+  const last = pending?.subtasks.at(-1)?.dueDate
+  return (
+    <div className={styles.schedule}>
+      <span>期限のないサブタスクが {plan.unscheduledSubtasks}件あります（遅れても親の期限まで気づけません）</span>
+      <button type="button" className={styles.scheduleButton} onClick={preview} disabled={busy}>
+        期限を割り振る
+      </button>
+      {pending && (
+        <ConfirmDialog
+          message={`「${plan.name}」のサブタスク ${pending.count}件に期限を付けます`}
+          detail={
+            first && last
+              ? `${formatDate(first)} 〜 ${formatDate(last)}。前のステップの期限の翌日から各ステップの期限までに、目安時間の割合で並べます（期限のあるもの・完了したものは変えません）`
+              : undefined
+          }
+          confirmLabel="割り振る"
+          onConfirm={apply}
+          onCancel={() => setPending(null)}
+        />
+      )}
+    </div>
   )
 }

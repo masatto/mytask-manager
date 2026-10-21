@@ -37,6 +37,8 @@ export function PlanImportPage() {
   const [checked, setChecked] = useState<Checked | null>(null)
   const [areaId, setAreaId] = useState<number | null>(null)
   const [areaNotice, setAreaNotice] = useState<string | null>(null)
+  // サブタスクに期限が無いと、遅れても親の期限まで気づけないので、既定で割り振る
+  const [scheduleSubtasks, setScheduleSubtasks] = useState(true)
   const [busy, setBusy] = useState(false)
 
   const prompt = buildPlanPrompt({ areaNames: areas.map((a) => a.name), today: todayKey() })
@@ -75,7 +77,7 @@ export function PlanImportPage() {
     const resolved = resolveArea(result.plan.areaName)
     setBusy(true)
     try {
-      const preview = await importPlan({ areaId: resolved, tasks: result.plan.tasks }, true)
+      const preview = await importPlan({ areaId: resolved, scheduleSubtasks, tasks: result.plan.tasks }, true)
       setErrors([])
       setAreaId(resolved)
       setChecked({ plan: result.plan, preview })
@@ -89,7 +91,7 @@ export function PlanImportPage() {
   const register = async (target: Checked) => {
     setBusy(true)
     try {
-      const result = await importPlan({ areaId, tasks: target.plan.tasks }, false)
+      const result = await importPlan({ areaId, scheduleSubtasks, tasks: target.plan.tasks }, false)
       await queryClient.invalidateQueries()
       showToast({
         message:
@@ -153,6 +155,18 @@ export function PlanImportPage() {
           spellCheck={false}
           placeholder='{ "area": "…", "tasks": [ … ] }'
         />
+        <label className={styles.checkRow}>
+          <input
+            type="checkbox"
+            checked={scheduleSubtasks}
+            onChange={(e) => {
+              setScheduleSubtasks(e.target.checked)
+              setChecked(null)
+            }}
+          />
+          期限のないサブタスクにも期限を割り振る
+          <span className={styles.hint}>（前のステップの期限の翌日〜親の期限に、目安時間の割合で並べます）</span>
+        </label>
         <div className={styles.row}>
           <button type="button" className={styles.button} onClick={check} disabled={busy || text.trim() === ''}>
             内容を確認
@@ -255,6 +269,12 @@ function PlanPreviewItem({ row }: { row: PlanImportRow }) {
               <li key={`${j}-${s.title}`} className={s.done || row.done ? styles.subDone : undefined}>
                 {s.title}
                 {s.estimateMinutes != null && <span className={styles.subEstimate}>{formatEstimate(s.estimateMinutes)}</span>}
+                {s.dueDate && (
+                  <span className={styles.subEstimate}>
+                    {formatDate(s.dueDate)}
+                    {s.scheduled && '（自動）'}
+                  </span>
+                )}
               </li>
             ))}
           </ul>

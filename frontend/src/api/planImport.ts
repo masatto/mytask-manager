@@ -15,6 +15,8 @@ export type PlanTaskInput = {
 
 export type PlanImportRequest = {
   areaId: number | null
+  /** 期限のないサブタスクに、ステップの期間の中で期限を割り振るか（api-design 11.2） */
+  scheduleSubtasks: boolean
   tasks: (PlanTaskInput & { subtasks?: PlanTaskInput[] | null | undefined })[]
 }
 
@@ -28,7 +30,14 @@ export type PlanImportRow = {
   priority: Priority
   done: boolean
   estimateMinutes: number | null
-  subtasks: { title: string; done: boolean; estimateMinutes: number | null }[]
+  subtasks: {
+    title: string
+    done: boolean
+    estimateMinutes: number | null
+    dueDate: string | null
+    /** 期限を自動で割り振ったもの */
+    scheduled: boolean
+  }[]
 }
 
 export type PlanImportResult = { created: number; skipped: number; tasks: PlanImportRow[] }

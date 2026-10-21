@@ -221,3 +221,18 @@
   color: var(--color-text-sub);
   text-decoration: line-through;
 }
+
+.checkRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.hint {
+  color: var(--color-text-sub);
+  font-size: 12px;
+}
