@@ -12,9 +12,12 @@ import jakarta.validation.constraints.Size;
 /**
  * POST /api/plan-import（api-design 9章）。AI が出力した作業分割をまとめて登録する。
  * 日付・時刻・優先度は、どの項目が誤っているかを返せるように文字列で受けてサービスで解釈する。
+ *
+ * @param scheduleSubtasks 期限のないサブタスクに、ステップの期間の中で期限を割り振るか（省略時は割り振る。api-design 11.2）
  */
 public record PlanImportRequest(
         Long areaId,
+        Boolean scheduleSubtasks,
         @NotEmpty(message = "タスクが1件もありません")
         @Size(max = 100, message = "親タスクは100件までです") List<@Valid PlanTask> tasks) {
 

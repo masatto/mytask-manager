@@ -1,15 +1,17 @@
 // AI が出力した作業分割の JSON（PROMPT.md の形式）を Orbit に登録する。
-// 使い方: node import-plan.mjs plan.json [--dry-run] [--base http://127.0.0.1:8080/api]
+// 使い方: node import-plan.mjs plan.json [--dry-run] [--no-schedule] [--base http://127.0.0.1:8080/api]
+// 期限のないサブタスクには、ステップの期間の中で期限を割り振る（--no-schedule で割り振らない）
 import { readFileSync } from 'node:fs'
 
 const args = process.argv.slice(2)
 const file = args.find((a) => !a.startsWith('--') && args[args.indexOf(a) - 1] !== '--base')
 const dryRun = args.includes('--dry-run')
+const noSchedule = args.includes('--no-schedule')
 const baseIndex = args.indexOf('--base')
 const BASE = (baseIndex >= 0 ? args[baseIndex + 1] : 'http://127.0.0.1:8080/api').replace(/\/$/, '')
 
 if (!file) {
-  console.error('使い方: node import-plan.mjs plan.json [--dry-run] [--base <Orbit の API の URL>]')
+  console.error('使い方: node import-plan.mjs plan.json [--dry-run] [--no-schedule] [--base <Orbit の API の URL>]')
   process.exit(1)
 }
 
@@ -57,22 +59,6 @@ async function call(method, path, body) {
   return text ? JSON.parse(text) : null
 }
 
-const toRequest = (t, extra) => ({
-  title: t.title.trim(),
-  memo: t.memo ?? null,
-  dueDate: t.dueDate ?? null,
-  dueTime: t.dueTime ?? null,
-  priority: t.priority ?? 'MEDIUM',
-  estimateMinutes: t.estimateMinutes ?? null,
-  parentId: null,
-  ...extra,
-})
-
-async function existingParentTitles(title) {
-  const res = await call('GET', `/tasks/search?q=${encodeURIComponent(title.trim().slice(0, 100))}`)
-  return res.items.some((item) => item.task.parentId === null && item.task.title === title.trim())
-}
-
 const plan = JSON.parse(readFileSync(file, 'utf8').replace(/^﻿/, ''))
 const errors = validate(plan)
 if (errors.length > 0) {
@@ -100,37 +86,26 @@ try {
 }
 
 console.log(`${dryRun ? '[確認のみ] ' : ''}登録先: ${BASE}  エリア: ${areaName}`)
-let created = 0
-let skipped = 0
-for (const t of plan.tasks) {
-  const subs = t.subtasks ?? []
-  const label = `${t.title.trim()}（期限 ${t.dueDate ?? 'なし'}${t.dueTime ? ' ' + t.dueTime : ''}・サブタスク ${subs.length}件）`
-  if (await existingParentTitles(t.title)) {
-    console.log(`  飛ばす  ${label} … 同じタイトルの親タスクが既にあります`)
-    skipped++
-    continue
-  }
-  if (dryRun) {
-    console.log(`  登録する ${label}`)
-    for (const s of subs) console.log(`      - ${s.done ? '[完了] ' : ''}${s.title.trim()}`)
-    created++
-    continue
-  }
-  const parent = await call('POST', '/tasks', toRequest(t, { areaId }))
-  let doneCount = 0
-  for (const s of subs) {
-    const child = await call('POST', '/tasks', toRequest(s, { parentId: parent.id }))
-    if (s.done) {
-      await call('PATCH', `/tasks/${child.id}/status`, { status: 'DONE' })
-      doneCount++
-    }
-  }
-  if (t.done) {
-    await call('PATCH', `/tasks/${parent.id}/status`, { status: 'DONE', completeSubtasks: true })
-  } else if (doneCount > 0) {
-    await call('PATCH', `/tasks/${parent.id}/status`, { status: 'IN_PROGRESS' })
-  }
-  console.log(`  登録した #${parent.id} ${label}`)
-  created++
+// 登録は画面の取り込みと同じ API で行う（入力チェック・同じタイトルの飛ばし・サブタスクの期限の割り振り・1トランザクション）
+const tasks = plan.tasks.map(({ subtasks, ...t }) => ({ ...t, subtasks: subtasks ?? [] }))
+let result
+try {
+  result = await call('POST', `/plan-import?dryRun=${dryRun}`, { areaId, scheduleSubtasks: !noSchedule, tasks })
+} catch (e) {
+  console.error(`登録できませんでした。
+${e.message}`)
+  process.exit(1)
 }
-console.log(`${dryRun ? '登録予定' : '登録'} ${created}件、飛ばした ${skipped}件`)
+for (const row of result.tasks) {
+  const label = `${row.title}（期限 ${row.dueDate ?? 'なし'}${row.dueTime ? ' ' + row.dueTime : ''}・サブタスク ${row.subtasks.length}件）`
+  if (row.action === 'SKIP_DUPLICATE') {
+    console.log(`  飛ばす  ${label} … 同じタイトルの親タスクが既にあります`)
+    continue
+  }
+  console.log(`  ${dryRun ? '登録する' : `登録した #${row.id}`} ${label}`)
+  for (const sub of row.subtasks) {
+    const due = sub.dueDate ? ` 期限 ${sub.dueDate}${sub.scheduled ? '（自動）' : ''}` : ''
+    console.log(`      - ${sub.done || row.done ? '[完了] ' : ''}${sub.title}${due}`)
+  }
+}
+console.log(`${dryRun ? '登録予定' : '登録'} ${result.created}件、飛ばした ${result.skipped}件`)

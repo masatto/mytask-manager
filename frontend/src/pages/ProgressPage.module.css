@@ -200,3 +200,37 @@
   width: 64px;
   text-align: right;
 }
+
+/* 期限のないサブタスクの割り振りの案内（screen-design 8.5） */
+.schedule {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 12px 0 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #f9eeda;
+  color: #7a4b00;
+  font-size: 13px;
+}
+
+.scheduleButton {
+  padding: 4px 12px;
+  border: 1px solid #d9b46a;
+  border-radius: 6px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.scheduleButton:hover:not(:disabled) {
+  background: var(--color-hover);
+}
+
+.scheduleButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

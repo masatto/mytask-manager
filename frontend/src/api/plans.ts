@@ -18,6 +18,8 @@ export type PlanStep = {
   remainingMinutes: number | null
   subtasksDone: number
   subtasksTotal: number
+  /** 期限を過ぎた未完了のサブタスクの数（1件以上なら overdue も true） */
+  overdueSubtasks: number
 }
 
 export type Plan = {
@@ -35,12 +37,24 @@ export type Plan = {
   /** 最終期限までに終えるのに必要な1週間あたりの時間（分） */
   weeklyMinutesNeeded: number | null
   nextStepId: number | null
+  /** 期限を割り振れる（期限のある未完了のステップの下で、期限のない未完了の）サブタスクの数 */
+  unscheduledSubtasks: number
   steps: PlanStep[]
 }
 
 /** タスクを変えると進み具合も変わるので、タスクと同じ ['tasks'] の下に置き、タスクの更新でまとめて取り直す */
 export const planKeys = {
   list: (areaId: number | null) => ['tasks', 'plans', areaId] as const,
+}
+
+export type SubtaskSchedule = {
+  count: number
+  subtasks: { id: number; title: string; stepId: number; dueDate: string }[]
+}
+
+/** POST /api/plans/schedule-subtasks（api-design 11.2）。dryRun なら割り振る内容だけを返す */
+export function scheduleSubtasks(name: string, dryRun: boolean): Promise<SubtaskSchedule> {
+  return apiFetch(`/plans/schedule-subtasks?dryRun=${dryRun}`, { method: 'POST', body: JSON.stringify({ name }) })
 }
 
 export function fetchPlans(areaId: number | null): Promise<{ items: Plan[] }> {
