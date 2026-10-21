@@ -41,7 +41,7 @@ export function AutoBackupSection({ onRestore, disabled }: AutoBackupSectionProp
       ) : (
         <>
           <p className={styles.description}>
-            アプリの起動時と毎日0時過ぎに1回、手動バックアップと同じ JSON を自動で保存し、直近{data.keep}
+            アプリの起動時と、日付が変わったとき（0時過ぎ。スリープしていたときは復帰後）に1回、手動バックアップと同じ JSON を自動で保存し、直近{data.keep}
             日分を残します（保存場所は上の「② 自動バックアップ」）。「復元」で、その時点の状態に戻せます。
           </p>
           {data.files.length === 0 ? (
