@@ -26,6 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.jayway.jsonpath.JsonPath;
 import com.masatto.mytask.MutableClock;
 import com.masatto.mytask.TestClockConfig;
+import com.masatto.mytask.backup.AutoBackupService;
+import com.masatto.mytask.config.DayChangeWatcher;
 
 import jakarta.persistence.EntityManager;
 
@@ -44,6 +46,9 @@ class RuleApiTest {
 
     @Autowired
     RecurrenceGenerator generator;
+
+    @Autowired
+    AutoBackupService autoBackupService;
 
     @Autowired
     EntityManager entityManager;
@@ -201,6 +206,25 @@ class RuleApiTest {
 
             clock.set(TestClockConfig.NOW.plusDays(1).withHour(0).withMinute(0));
             generator.generateAll();
+
+            tasks("today").andExpect(jsonPath("$.items[*].task.dueDate", contains("2026-10-14", "2026-10-15")));
+        }
+
+        @Test
+        void 日付の変化を確かめる処理は_日付が変わったときだけ生成する() throws Exception {
+            createRule("""
+                    {"title":"日報","priority":"MEDIUM","pattern":{"type":"DAILY"},"startDate":"2026-10-14"}
+                    """);
+            DayChangeWatcher watcher = new DayChangeWatcher(generator, autoBackupService, clock);
+
+            // 同じ日のうちは何もしない（起動した日の分は起動時の処理が作る）
+            watcher.check();
+            tasks("today").andExpect(jsonPath("$.items[*].task.dueDate", contains("2026-10-14")));
+
+            // スリープで 0:00 を逃し、翌日の昼に復帰した想定
+            clock.set(TestClockConfig.NOW.plusDays(1).withHour(12));
+            watcher.check();
+            watcher.check();
 
             tasks("today").andExpect(jsonPath("$.items[*].task.dueDate", contains("2026-10-14", "2026-10-15")));
         }

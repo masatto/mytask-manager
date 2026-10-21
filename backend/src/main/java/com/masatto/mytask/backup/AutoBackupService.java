@@ -20,7 +20,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpStatus;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import com.masatto.mytask.common.ApiException;
@@ -29,7 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * 自動バックアップ。1日1回（起動時と毎日0:05）、エクスポートと同じ JSON をバックアップ用フォルダーに保存し、
+ * 自動バックアップ。1日1回（起動時と、日付が変わったとき）、エクスポートと同じ JSON をバックアップ用フォルダーに保存し、
  * 新しいものから KEEP 日分だけ残す。手動のエクスポートを忘れても、DB ファイルの破損などから復元できるようにする。
  *
  * コピー先（OneDrive などの同期フォルダー）が設定されていれば、同じファイルをそこにも置き、そこでも KEEP 日分だけ残す。
@@ -71,11 +70,7 @@ public class AutoBackupService {
             String mirrorError, List<BackupFile> mirrorFiles) {
     }
 
-    @Scheduled(cron = "0 5 0 * * *", zone = "${mytask.zone}")
-    public void daily() {
-        runIfNeeded();
-    }
-
+    /** 日付が変わったときの保存は DayChangeWatcher が行う */
     @EventListener(ApplicationReadyEvent.class)
     public void onStartup() {
         runIfNeeded();
