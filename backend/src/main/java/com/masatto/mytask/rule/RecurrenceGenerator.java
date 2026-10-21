@@ -7,7 +7,6 @@ import java.util.Optional;
 
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -36,11 +35,7 @@ public class RecurrenceGenerator {
     private final Clock clock;
     private final TransactionTemplate transactionTemplate;
 
-    @Scheduled(cron = "0 0 0 * * *", zone = "${mytask.zone}")
-    public void onMidnight() {
-        generateAll();
-    }
-
+    /** 日付が変わったときの生成は DayChangeWatcher が行う */
     @EventListener(ApplicationReadyEvent.class)
     public void onStartup() {
         generateAll();

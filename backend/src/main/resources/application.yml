@@ -37,3 +37,5 @@ mytask:
   # 画面から変える設定（自動バックアップのコピー先など）の保存先
   settings-file: ${mytask.data-dir}/settings.json
   zone: Asia/Tokyo
+  # 日付が変わったかを確かめる間隔。スリープ明けでも、この時間以内に今日の繰り返しタスクと自動バックアップを作る
+  day-check-interval: PT1M
