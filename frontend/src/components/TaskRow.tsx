@@ -26,6 +26,12 @@ type TaskRowProps = {
   onToggleExpand?: () => void
   /** 指定すると、行にマウスを乗せたとき「明日へ」ボタンを出す */
   onPostpone?: (task: Task) => void
+  /**
+   * 指定すると、行にマウスを乗せたとき、未着手なら「着手」、進行中なら「中断」ボタンを出す。
+   * 進行中にするのに詳細パネルを開かなくて済むように（完了のチェックと同じく一覧から操作できる）
+   */
+  onStart?: (task: Task) => void
+  onPause?: (task: Task) => void
 }
 
 function dueLabel(task: Task, groupDate: string | null): string {
@@ -50,6 +56,8 @@ export function TaskRow({
   expanded,
   onToggleExpand,
   onPostpone,
+  onStart,
+  onPause,
 }: TaskRowProps) {
   // 絞り込んでいるときは全部同じエリアなので出さない。サブタスクは親と同じなので出さない
   const { areas, areaId } = useAreas()
@@ -113,10 +121,30 @@ export function TaskRow({
           </span>
         )}
       </div>
+      {task.status === 'TODO' && onStart && (
+        <button
+          type="button"
+          className={styles.rowAction}
+          onClick={() => onStart(task)}
+          aria-label={`「${task.title}」に着手`}
+        >
+          着手
+        </button>
+      )}
+      {task.status === 'IN_PROGRESS' && onPause && (
+        <button
+          type="button"
+          className={styles.rowAction}
+          onClick={() => onPause(task)}
+          aria-label={`「${task.title}」を中断して未着手に戻す`}
+        >
+          中断
+        </button>
+      )}
       {onPostpone && (
         <button
           type="button"
-          className={styles.postpone}
+          className={styles.rowAction}
           onClick={() => onPostpone(task)}
           aria-label={`「${task.title}」を明日に延期`}
         >

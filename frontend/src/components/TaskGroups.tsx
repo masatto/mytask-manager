@@ -15,7 +15,7 @@ type TaskGroupsProps = {
 }
 
 export function TaskGroups({ groups, showCompletedTime, selectedId, onOpen }: TaskGroupsProps) {
-  const { toggle, pending, confirmDialog } = useToggleComplete()
+  const { toggle, start, pause, pending, confirmDialog } = useToggleComplete()
   const reschedule = useReschedule()
   const today = todayKey()
   // 期限が今日以前の未完了タスクだけ「明日へ」を出す
@@ -81,6 +81,8 @@ export function TaskGroups({ groups, showCompletedTime, selectedId, onOpen }: Ta
                     expanded={subtasks.length > 0 ? expanded : undefined}
                     onToggleExpand={subtasks.length > 0 ? () => toggleExpand(task.id) : undefined}
                     onPostpone={postponeFor(task)}
+                    onStart={start}
+                    onPause={pause}
                   />
                   {subtasks.length > 0 && expanded && (
                     <ul className={styles.list} aria-label={`「${task.title}」のサブタスク`}>
@@ -96,6 +98,8 @@ export function TaskGroups({ groups, showCompletedTime, selectedId, onOpen }: Ta
                             onOpen={onOpen}
                             isSubtask
                             onPostpone={postponeFor(sub)}
+                            onStart={start}
+                            onPause={pause}
                           />
                         </li>
                       ))}

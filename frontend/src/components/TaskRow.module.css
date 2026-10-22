@@ -145,7 +145,7 @@ button.expander:hover {
 }
 
 /* 「明日へ」は行にマウスを乗せたとき（またはキーボードで選んだとき）だけ出す */
-.postpone {
+.rowAction {
   flex: none;
   padding: 2px 8px;
   border: 1px solid var(--color-border);
@@ -157,12 +157,12 @@ button.expander:hover {
   opacity: 0;
 }
 
-.row:hover .postpone,
-.postpone:focus-visible {
+.row:hover .rowAction,
+.rowAction:focus-visible {
   opacity: 1;
 }
 
-.postpone:hover {
+.rowAction:hover {
   border-color: var(--color-accent);
   color: var(--color-accent);
 }
