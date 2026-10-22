@@ -9,8 +9,20 @@ import { useInvalidateTasks } from './useTasks.ts'
 
 type ChangeVariables = { task: Task; status: TaskStatus; completeSubtasks?: boolean }
 
+/** 変更後のトーストの文。未着手に戻すときは、元が進行中か完了かで言い分ける */
+function changedMessage(from: TaskStatus, to: TaskStatus): string {
+  switch (to) {
+    case 'DONE':
+      return '完了にしました'
+    case 'IN_PROGRESS':
+      return '着手しました'
+    case 'TODO':
+      return from === 'IN_PROGRESS' ? '未着手に戻しました' : '未完了に戻しました'
+  }
+}
+
 /**
- * チェックボックスによる完了・未完了の切り替え。
+ * チェックボックスによる完了・未完了の切り替えと、行の「着手」「中断」による進行中・未着手の切り替え。
  * - 変更後に「元に戻す」付きのトーストを出す（screen-design 3.1）
  * - 未完了のサブタスクが残る親を完了にしようとしたら D1 を出し、OKなら一括完了する（screen-design 6章）
  *
@@ -30,12 +42,12 @@ export function useToggleComplete() {
   const change = useMutation({
     mutationFn: ({ task, status, completeSubtasks }: ChangeVariables) =>
       changeTaskStatus(task.id, status, completeSubtasks),
-    onSuccess: ({ changed }, { status }) => {
+    onSuccess: ({ changed }, { task, status }) => {
       if (changed.length === 0) {
         return
       }
       showToast({
-        message: status === 'DONE' ? '完了にしました' : '未完了に戻しました',
+        message: changedMessage(task.status, status),
         action: {
           label: '元に戻す',
           onClick: () => restore.mutate(changed.map((c) => ({ id: c.id, status: c.previousStatus }))),
@@ -66,6 +78,10 @@ export function useToggleComplete() {
 
   return {
     toggle: (task: Task, done: boolean) => change.mutate({ task, status: done ? 'DONE' : 'TODO' }),
+    /** 未着手 → 進行中（行の「着手」） */
+    start: (task: Task) => change.mutate({ task, status: 'IN_PROGRESS' }),
+    /** 進行中 → 未着手（行の「中断」） */
+    pause: (task: Task) => change.mutate({ task, status: 'TODO' }),
     /** 送信中のタスクと変更先（チェック状態を先に反映するため） */
     pending: change.isPending ? change.variables : undefined,
     confirmDialog,
