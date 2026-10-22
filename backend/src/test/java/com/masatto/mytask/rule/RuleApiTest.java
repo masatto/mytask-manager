@@ -405,4 +405,85 @@ class RuleApiTest {
                     .andExpect(jsonPath("$.occurrences", contains("2026-10-14", "2026-10-15")));
         }
     }
+
+    @Nested
+    class 手動のルール {
+
+        private static final String INTERVIEW = """
+                {"title":"インタビュー準備","priority":"HIGH","pattern":{"type":"MANUAL"},"startDate":"2026-10-14",
+                 "estimateMinutes":60,"subtaskTemplates":[{"title":"会議室準備","priority":"MEDIUM","estimateMinutes":15},
+                 {"title":"質問内容整理","priority":"MEDIUM","estimateMinutes":45}]}
+                """;
+
+        private ResultActions createTask(long ruleId, String json) throws Exception {
+            return mockMvc.perform(post("/api/rules/{id}/tasks", ruleId).contentType(MediaType.APPLICATION_JSON)
+                    .content(json));
+        }
+
+        @Test
+        void 自動では作らず_次回の生成予定もない() throws Exception {
+            long ruleId = createRule(INTERVIEW);
+
+            clock.set(TestClockConfig.NOW.plusDays(30));
+            generator.generateAll();
+
+            tasks("today").andExpect(jsonPath("$.items", empty()));
+            tasks("no-due").andExpect(jsonPath("$.items", empty()));
+            mockMvc.perform(get("/api/rules/{id}", ruleId))
+                    .andExpect(jsonPath("$.pattern.type").value("MANUAL"))
+                    .andExpect(jsonPath("$.nextOccurrence").doesNotExist());
+            mockMvc.perform(post("/api/rules/preview").contentType(MediaType.APPLICATION_JSON).content("""
+                    {"pattern":{"type":"MANUAL"},"startDate":"2026-10-14"}
+                    """))
+                    .andExpect(jsonPath("$.occurrences", empty()));
+        }
+
+        @Test
+        void 作成するとひな形から親とサブタスクができ_同じ日に何度でも作れる() throws Exception {
+            long ruleId = createRule(INTERVIEW);
+
+            createTask(ruleId, """
+                    {"title":"インタビュー準備（佐藤さん）","dueDate":"2026-10-14","dueTime":"15:00"}
+                    """)
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.title").value("インタビュー準備（佐藤さん）"))
+                    .andExpect(jsonPath("$.dueDate").value("2026-10-14"));
+            createTask(ruleId, """
+                    {"title":"インタビュー準備（鈴木さん）","dueDate":"2026-10-14"}
+                    """)
+                    .andExpect(status().isCreated());
+
+            tasks("today")
+                    .andExpect(jsonPath("$.items[*].task.title",
+                            contains("インタビュー準備（佐藤さん）", "インタビュー準備（鈴木さん）")))
+                    .andExpect(jsonPath("$.items[0].task.dueTime").value("15:00"))
+                    .andExpect(jsonPath("$.items[0].task.priority").value("HIGH"))
+                    .andExpect(jsonPath("$.items[0].task.estimateMinutes").value(60))
+                    // 繰り返しの回としては記録しない
+                    .andExpect(jsonPath("$.items[0].task.recurrence").doesNotExist())
+                    .andExpect(jsonPath("$.items[0].subtasks[*].title", contains("会議室準備", "質問内容整理")))
+                    .andExpect(jsonPath("$.items[0].subtasks[*].estimateMinutes", contains(15, 45)));
+        }
+
+        @Test
+        void タイトルを省くとルールのタイトルで_期限なしでも作れる() throws Exception {
+            long ruleId = createRule(INTERVIEW);
+
+            createTask(ruleId, "{}").andExpect(status().isCreated());
+
+            tasks("no-due").andExpect(jsonPath("$.items[*].task.title", contains("インタビュー準備")));
+        }
+
+        @Test
+        void 時刻だけの期限は400_ないルールは404() throws Exception {
+            long ruleId = createRule(INTERVIEW);
+
+            createTask(ruleId, """
+                    {"dueTime":"15:00"}
+                    """)
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.fieldErrors[0].field").value("dueTime"));
+            createTask(999999, "{}").andExpect(status().isNotFound());
+        }
+    }
 }

@@ -18,7 +18,7 @@ export const ruleFormSchema = z
     memo: z.string().max(10000, 'メモは10000文字以内で入力してください'),
     priority: z.enum(PRIORITIES),
     dueTime: z.string(),
-    patternType: z.enum(['DAILY', 'WEEKLY', 'MONTHLY']),
+    patternType: z.enum(['DAILY', 'WEEKLY', 'MONTHLY', 'MANUAL']),
     daysOfWeek: z.array(z.enum(WEEKDAYS)),
     /** select の値なので文字列。'-1' は末日 */
     dayOfMonth: z.string(),
@@ -124,11 +124,12 @@ export function toInput(v: RuleFormOutput, active: boolean): RuleInput {
   }
 }
 
-/** 次回の生成予定を計算するための入力。入力が途中（開始日なし・曜日なし・終了日が前）なら null */
+/** 次回の生成予定を計算するための入力。入力が途中（開始日なし・曜日なし・終了日が前）か、手動なら null */
 export function toPreviewInput(
   v: PatternFields & Pick<RuleFormValues, 'startDate' | 'endDate'>,
 ): RulePreviewInput | null {
   const incomplete =
+    v.patternType === 'MANUAL' ||
     v.startDate === '' ||
     (v.patternType === 'WEEKLY' && v.daysOfWeek.length === 0) ||
     (v.endDate !== '' && v.endDate < v.startDate)

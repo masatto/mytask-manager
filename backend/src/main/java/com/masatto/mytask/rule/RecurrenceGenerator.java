@@ -3,6 +3,7 @@ package com.masatto.mytask.rule;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Optional;
 
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -79,17 +80,23 @@ public class RecurrenceGenerator {
         Task parent = null;
         // バックアップの復元などで同じ回が既にある場合は作らない（一意制約の最終防止策より手前で止める）
         if (!taskRepository.existsByRecurrenceRuleIdAndOccurrenceDate(rule.getId(), occurrence)) {
-            parent = createTasks(rule, occurrence);
+            parent = createTasks(rule, rule.getTitle(), occurrence, rule.getDueTime(), occurrence);
         }
         rule.markGenerated(occurrence);
         return Optional.ofNullable(parent);
     }
 
-    private Task createTasks(RecurrenceRule rule, LocalDate occurrence) {
+    /**
+     * ルールのひな形から親タスクとサブタスクを作る。
+     *
+     * @param occurrence 繰り返しの回として作るときの発生日（生成元として記録する）。手動で作るときは null
+     */
+    Task createTasks(RecurrenceRule rule, String title, LocalDate dueDate, LocalTime dueTime, LocalDate occurrence) {
         Instant now = Instant.now(clock);
-        Task parent = Task.create(rule.getTitle(), rule.getMemo(), occurrence, rule.getDueTime(), rule.getPriority(),
-                null, now);
-        parent.linkRecurrence(rule.getId(), occurrence);
+        Task parent = Task.create(title, rule.getMemo(), dueDate, dueTime, rule.getPriority(), null, now);
+        if (occurrence != null) {
+            parent.linkRecurrence(rule.getId(), occurrence);
+        }
         parent.setAreaId(rule.getAreaId());
         parent.setEstimateMinutes(rule.getEstimateMinutes());
         taskRepository.save(parent);

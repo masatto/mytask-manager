@@ -1,7 +1,9 @@
 import { useSearchParams } from 'react-router'
+import { useState } from 'react'
 import type { Rule } from '../api/types.ts'
 import { AreaBadge } from '../areas/AreaBadge.tsx'
 import { useAreas } from '../areas/useAreas.ts'
+import { CreateFromRuleDialog } from '../components/CreateFromRuleDialog.tsx'
 import { PageTitle } from '../components/PageTitle.tsx'
 import { RuleEditPanel } from '../components/RuleEditPanel.tsx'
 import { useRules, useSetRuleActive } from '../hooks/useRules.ts'
@@ -67,6 +69,8 @@ function RuleList({ selectedId, onOpen }: { selectedId: number | null; onOpen: (
   const setActive = useSetRuleActive()
   const { showToast } = useToast()
   const { areas, areaId } = useAreas()
+  // 手動のルールの「作成」で開いているダイアログ
+  const [creating, setCreating] = useState<Rule | null>(null)
 
   if (isPending) {
     return <p className={styles.message}>読み込み中…</p>
@@ -95,48 +99,69 @@ function RuleList({ selectedId, onOpen }: { selectedId: number | null; onOpen: (
     )
 
   return (
-    <table className={styles.table}>
-      <thead>
-        <tr>
-          <th className={styles.activeCol}>有効</th>
-          <th>タイトル</th>
-          <th>パターン</th>
-          <th>次回</th>
-        </tr>
-      </thead>
-      <tbody>
-        {data.items.map((rule) => {
-          const area = areaId === null ? areas.find((a) => a.id === rule.areaId) : undefined
-          const pendingActive =
-            setActive.isPending && setActive.variables?.id === rule.id ? setActive.variables.active : rule.active
-          return (
-            <tr key={rule.id} className={rule.id === selectedId ? styles.selected : undefined}>
-              <td className={styles.activeCol}>
-                <input
-                  type="checkbox"
-                  role="switch"
-                  className={styles.switch}
-                  checked={pendingActive}
-                  onChange={(e) => toggleActive(rule, e.target.checked)}
-                  aria-label={`「${rule.title}」を有効にする`}
-                />
-              </td>
-              <td>
-                <div className={styles.titleCell}>
-                  {area && <AreaBadge area={area} />}
-                  <button type="button" className={styles.ruleTitle} onClick={() => onOpen(rule.id)}>
-                    {rule.title}
-                  </button>
-                </div>
-              </td>
-              <td className={styles.sub}>{describePattern(rule.pattern)}</td>
-              <td className={styles.sub}>
-                {rule.nextOccurrence ? formatDate(rule.nextOccurrence) : rule.active ? '—（終了）' : '—（停止中）'}
-              </td>
-            </tr>
-          )
-        })}
-      </tbody>
-    </table>
+    <>
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            <th className={styles.activeCol}>有効</th>
+            <th>タイトル</th>
+            <th>パターン</th>
+            <th>次回</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.items.map((rule) => {
+            const area = areaId === null ? areas.find((a) => a.id === rule.areaId) : undefined
+            const pendingActive =
+              setActive.isPending && setActive.variables?.id === rule.id ? setActive.variables.active : rule.active
+            return (
+              <tr key={rule.id} className={rule.id === selectedId ? styles.selected : undefined}>
+                <td className={styles.activeCol}>
+                  {/* 手動のルールは自動で作らないので、有効・停止の切り替えはない */}
+                  {rule.pattern.type !== 'MANUAL' && (
+                    <input
+                      type="checkbox"
+                      role="switch"
+                      className={styles.switch}
+                      checked={pendingActive}
+                      onChange={(e) => toggleActive(rule, e.target.checked)}
+                      aria-label={`「${rule.title}」を有効にする`}
+                    />
+                  )}
+                </td>
+                <td>
+                  <div className={styles.titleCell}>
+                    {area && <AreaBadge area={area} />}
+                    <button type="button" className={styles.ruleTitle} onClick={() => onOpen(rule.id)}>
+                      {rule.title}
+                    </button>
+                  </div>
+                </td>
+                <td className={styles.sub}>{describePattern(rule.pattern)}</td>
+                <td className={styles.sub}>
+                  {rule.pattern.type === 'MANUAL' ? (
+                    <button
+                      type="button"
+                      className={styles.createButton}
+                      onClick={() => setCreating(rule)}
+                      aria-label={`「${rule.title}」からタスクを作成`}
+                    >
+                      作成
+                    </button>
+                  ) : rule.nextOccurrence ? (
+                    formatDate(rule.nextOccurrence)
+                  ) : rule.active ? (
+                    '—（終了）'
+                  ) : (
+                    '—（停止中）'
+                  )}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+      {creating && <CreateFromRuleDialog rule={creating} onClose={() => setCreating(null)} />}
+    </>
   )
 }

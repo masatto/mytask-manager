@@ -10,10 +10,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.masatto.mytask.area.AreaService;
 import com.masatto.mytask.common.ApiException;
+import com.masatto.mytask.rule.dto.CreateTaskFromRuleRequest;
+import com.masatto.mytask.rule.dto.CreateTaskFromRuleRequest.CreatedTask;
 import com.masatto.mytask.rule.dto.PatternDto;
 import com.masatto.mytask.rule.dto.RulePreviewRequest;
 import com.masatto.mytask.rule.dto.RuleRequest;
 import com.masatto.mytask.rule.dto.RuleResponse;
+
+import com.masatto.mytask.task.Task;
 
 import lombok.RequiredArgsConstructor;
 
@@ -71,6 +75,21 @@ public class RuleService {
         return toResponse(rule);
     }
 
+    /**
+     * ルールをひな形にして、今すぐ親タスクとサブタスクを作る（api-design 4.3）。手動のルールのほか、どのルールでも使える。
+     * 作ったタスクは繰り返しの回としては記録しない（同じ日に何度作ってもよく、次回の自動生成にも影響しない）。
+     */
+    @Transactional
+    public CreatedTask createTask(Long id, CreateTaskFromRuleRequest request) {
+        if (request.dueDate() == null && request.dueTime() != null) {
+            throw ApiException.validation("dueTime", "時刻だけの期限は設定できません。日付も入力してください");
+        }
+        RecurrenceRule rule = findRule(id);
+        String title = request.title() == null || request.title().isBlank() ? rule.getTitle() : request.title().strip();
+        Task parent = generator.createTasks(rule, title, request.dueDate(), request.dueTime(), null);
+        return new CreatedTask(parent.getId(), parent.getTitle(), parent.getDueDate());
+    }
+
     @Transactional
     public void delete(Long id) {
         // 生成済みのタスクは残り、ルールへの参照だけが DB 側で NULL になる（ON DELETE SET NULL）
@@ -122,6 +141,7 @@ public class RuleService {
                 }
                 yield new RecurrencePattern(PatternType.MONTHLY, null, day, startDate, endDate);
             }
+            case MANUAL -> new RecurrencePattern(PatternType.MANUAL, null, null, startDate, endDate);
         };
     }
 

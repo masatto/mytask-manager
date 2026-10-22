@@ -40,6 +40,16 @@ export function deleteRule(id: number): Promise<void> {
   return apiFetch(`/rules/${id}`, { method: 'DELETE' })
 }
 
+export type CreateTaskFromRuleInput = { title: string; dueDate: string | null; dueTime: string | null }
+
+/** POST /api/rules/{id}/tasks（api-design 4.3）。ルールをひな形にして今すぐタスクを作る */
+export function createTaskFromRule(
+  id: number,
+  input: CreateTaskFromRuleInput,
+): Promise<{ id: number; title: string; dueDate: string | null }> {
+  return apiFetch(`/rules/${id}/tasks`, { method: 'POST', body: JSON.stringify(input) })
+}
+
 export function previewRule(input: RulePreviewInput): Promise<{ occurrences: string[] }> {
   return apiFetch('/rules/preview', { method: 'POST', body: JSON.stringify(input) })
 }
