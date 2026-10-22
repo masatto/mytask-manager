@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.masatto.mytask.rule.dto.CreateTaskFromRuleRequest;
+import com.masatto.mytask.rule.dto.CreateTaskFromRuleRequest.CreatedTask;
 import com.masatto.mytask.rule.dto.RulePreviewRequest;
 import com.masatto.mytask.rule.dto.RuleRequest;
 import com.masatto.mytask.rule.dto.RuleResponse;
@@ -64,6 +66,13 @@ public class RuleController {
     @PatchMapping("/{id}/active")
     public RuleResponse setActive(@PathVariable Long id, @Valid @RequestBody ActiveRequest request) {
         return ruleService.setActive(id, request.active());
+    }
+
+    /** ルールをひな形にして、今すぐ親タスクとサブタスクを作る */
+    @PostMapping("/{id}/tasks")
+    @ResponseStatus(HttpStatus.CREATED)
+    public CreatedTask createTask(@PathVariable Long id, @Valid @RequestBody CreateTaskFromRuleRequest request) {
+        return ruleService.createTask(id, request);
     }
 
     @DeleteMapping("/{id}")

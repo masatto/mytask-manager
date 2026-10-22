@@ -1,4 +1,4 @@
-# mytask-manager API設計 v1.11
+# mytask-manager API設計 v1.12
 
 [requirements.md](requirements.md) v1.1 と [screen-design.md](screen-design.md) v1.0 に基づく。
 
@@ -305,6 +305,24 @@ TaskResponse に次の項目を加えて返す。
 | DELETE `/rules/{id}` | 204。生成済みのタスクは残し、ルールへの参照だけを外す |
 | POST `/rules/preview` | RuleRequest の `pattern`・`startDate`・`endDate` だけを使う。今日以降の発生日を最大3件、`{ "occurrences": ["2026-10-19", "2026-10-26", "2026-11-02"] }` で返す |
 
+### 4.3 手動のルールと POST `/rules/{id}/tasks`（Phase 18 で追加）
+
+- `pattern.type` に `MANUAL` を加える。自動では作らない（発生日を持たない）ルールで、`daysOfWeek`・`dayOfMonth` は null。`nextOccurrence` は常に null、`/rules/preview` は空の一覧を返す。`startDate` は必須のまま（画面は今日を送る）
+- POST `/rules/{id}/tasks`：ルールをひな形にして、今すぐ親タスクとサブタスクを作る。手動以外のルールでも使える
+
+```json
+{ "title": "インタビュー準備（佐藤さん）", "dueDate": "2026-10-24", "dueTime": "15:00" }
+```
+
+| 項目 | 入力チェック |
+|---|---|
+| `title` | 200文字まで。省略・空ならルールのタイトル |
+| `dueDate` / `dueTime` | どちらも任意。`dueDate` がないときは `dueTime` を指定できない（400、field は `dueTime`） |
+
+- メモ・優先度・エリア・目安・サブタスク（ひな形の順）はルールのものを使う
+- 繰り返しの回としては記録しない（`recurrence` は null）。同じ日に何度作ってもよく、次回の自動生成にも影響しない
+- レスポンス：201 と `{ "id": 50, "title": "…", "dueDate": "2026-10-24" }`（作った親タスク）。ないルールは 404
+
 ## 5. 繰り返しタスクの生成処理（API外の動作）
 
 **実行タイミング**
@@ -566,3 +584,4 @@ TaskResponse に次の項目を加えて返す。
 | 2026-10-21 | 1.9 | 繰り返し生成の実行タイミングを「日付が変わったとき」に変更（5章）。目安時間（10章）、バックアップ形式バージョン 3 |
 | 2026-10-21 | 1.10 | 件数に `todayEstimateMinutes` を追加（10章）。計画の進み具合（11章）を追加 |
 | 2026-10-21 | 1.11 | サブタスクの期限の割り振り（9.1 の `scheduleSubtasks`、11.2）。サブタスクの遅れも計画の遅れにする |
+| 2026-10-22 | 1.12 | 手動のルール（`MANUAL`）と、ルールからタスクを作る POST `/rules/{id}/tasks`（4.3） |

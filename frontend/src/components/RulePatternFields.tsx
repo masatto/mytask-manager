@@ -9,6 +9,7 @@ const PATTERN_OPTIONS = [
   { value: 'WEEKLY', label: '毎週' },
   { value: 'DAILY', label: '毎日' },
   { value: 'MONTHLY', label: '毎月' },
+  { value: 'MANUAL', label: '手動' },
 ] as const
 
 type RulePatternFieldsProps = {
@@ -33,6 +34,12 @@ export function RulePatternFields({ register, errors, patternType }: RulePattern
           ))}
         </div>
       </dd>
+
+      {patternType === 'MANUAL' && (
+        <dd className={styles.hint}>
+          自動では作りません。繰り返しルールの一覧の「作成」で、タスク名と期限を入れて、必要なときに作ります
+        </dd>
+      )}
 
       {patternType === 'WEEKLY' && (
         <>

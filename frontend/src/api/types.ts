@@ -104,7 +104,8 @@ export const STATUS_LABELS: Record<TaskStatus, string> = {
 
 /** api-design 4章：繰り返しルール */
 
-export type PatternType = 'DAILY' | 'WEEKLY' | 'MONTHLY'
+/** MANUAL は自動では作らず、一覧の「作成」で必要なときに作る（ひな形として使う） */
+export type PatternType = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'MANUAL'
 export type Weekday = 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN'
 
 export type Pattern = {

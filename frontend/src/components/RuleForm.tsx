@@ -207,22 +207,27 @@ export function RuleForm({ rule, onClose, onCreated, onDeleted, onDirtyChange }:
 
         <RulePatternFields register={register} errors={errors} patternType={patternType} />
 
-        <dt>
-          <label htmlFor="rule-start-date">開始日</label>
-        </dt>
-        <dd>
-          <input id="rule-start-date" type="date" className={formStyles.input} {...register('startDate')} />
-          {errors.startDate && <p className={formStyles.fieldError}>{errors.startDate.message}</p>}
-        </dd>
+        {/* 手動のルールは自動で作らないので、期間を持たない（開始日は内部的に今日のまま） */}
+        {patternType !== 'MANUAL' && (
+          <>
+            <dt>
+              <label htmlFor="rule-start-date">開始日</label>
+            </dt>
+            <dd>
+              <input id="rule-start-date" type="date" className={formStyles.input} {...register('startDate')} />
+              {errors.startDate && <p className={formStyles.fieldError}>{errors.startDate.message}</p>}
+            </dd>
 
-        <dt>
-          <label htmlFor="rule-end-date">終了日</label>
-        </dt>
-        <dd className={styles.inline}>
-          <input id="rule-end-date" type="date" className={formStyles.input} {...register('endDate')} />
-          <span className={styles.hint}>（任意）</span>
-          {errors.endDate && <p className={formStyles.fieldError}>{errors.endDate.message}</p>}
-        </dd>
+            <dt>
+              <label htmlFor="rule-end-date">終了日</label>
+            </dt>
+            <dd className={styles.inline}>
+              <input id="rule-end-date" type="date" className={formStyles.input} {...register('endDate')} />
+              <span className={styles.hint}>（任意）</span>
+              {errors.endDate && <p className={formStyles.fieldError}>{errors.endDate.message}</p>}
+            </dd>
+          </>
+        )}
       </dl>
 
       <label className={formStyles.memoLabel} htmlFor="rule-memo">
@@ -237,10 +242,12 @@ export function RuleForm({ rule, onClose, onCreated, onDeleted, onDirtyChange }:
         onEstimateBlur={tidyEstimate}
       />
 
-      <section className={styles.preview} aria-label="次回の生成予定">
-        <h3 className={formStyles.subtasksHeading}>次回の生成予定</h3>
-        <p className={styles.previewDates}>{previewText(previewInput !== null, preview)}</p>
-      </section>
+      {patternType !== 'MANUAL' && (
+        <section className={styles.preview} aria-label="次回の生成予定">
+          <h3 className={formStyles.subtasksHeading}>次回の生成予定</h3>
+          <p className={styles.previewDates}>{previewText(previewInput !== null, preview)}</p>
+        </section>
+      )}
 
       <div className={formStyles.actions}>
         <button type="button" className={formStyles.secondary} onClick={onClose}>

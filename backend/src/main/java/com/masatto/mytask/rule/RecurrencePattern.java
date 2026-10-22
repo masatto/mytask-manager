@@ -14,6 +14,7 @@ import java.util.Set;
  * <li>毎日：開始日以降の毎日</li>
  * <li>毎週：指定した曜日</li>
  * <li>毎月：指定した日。その月に存在しない日（31日など）と末日指定（-1）は、その月の最終日</li>
+ * <li>手動：発生日はない（自動では作らない）</li>
  * </ul>
  *
  * @param daysOfWeek WEEKLY のときだけ使う
@@ -49,6 +50,7 @@ public record RecurrencePattern(
                         ? monthlyDate(YearMonth.from(candidate).minusMonths(1))
                         : inMonth);
             }
+            case MANUAL -> Optional.empty();
         };
         return found.filter(d -> !d.isBefore(startDate));
     }
@@ -73,6 +75,7 @@ public record RecurrencePattern(
                         ? monthlyDate(YearMonth.from(candidate).plusMonths(1))
                         : inMonth);
             }
+            case MANUAL -> Optional.empty();
         };
         return found.filter(d -> endDate == null || !d.isAfter(endDate));
     }

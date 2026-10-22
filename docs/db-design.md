@@ -1,4 +1,4 @@
-# mytask-manager DB設計 v1.3
+# mytask-manager DB設計 v1.4
 
 [requirements.md](requirements.md) v1.1 と [api-design.md](api-design.md) v1.0 に基づく。
 
@@ -133,6 +133,11 @@ recurrence_rules 1 ──── 0..* rule_subtask_templates
 
 - NULL は未設定。親の目安とサブタスクの合計は別々に持ち、比べるのは画面で行う（合計を親に自動で入れることはしない）
 
+### 3.7 手動のルール（V4 で追加）
+
+- `recurrence_rules.pattern_type` に `MANUAL` を加える。`ck_rules_pattern` を作り直し、`MANUAL` では `days_of_week`・`day_of_month` を NULL にする
+- 手動で作ったタスクは `recurrence_rule_id`・`occurrence_date` を持たない（`uq_tasks_occurrence` に関わらないので、同じ日に何件でも作れる）
+
 ### 3.4 サブタスクの入れ子をDBで禁止する仕組み
 
 - サブタスクの行は、`(parent_id, parent_level)` = `(親のID, 0)` で親を参照する
@@ -170,3 +175,4 @@ recurrence_rules 1 ──── 0..* rule_subtask_templates
 | 2026-10-15 | 1.1 | Phase 2 の実装に合わせて、`Task` の親を関連ではなく `parentId` で持つ形に変更 |
 | 2026-10-19 | 1.2 | エリア（3.5 `areas`、`tasks.area_id`、`recurrence_rules.area_id`）を追加 |
 | 2026-10-21 | 1.3 | 目安時間（3.6、3テーブルの `estimate_minutes`）を追加 |
+| 2026-10-22 | 1.4 | 手動のルール（3.7、`ck_rules_pattern` に `MANUAL`）を追加 |

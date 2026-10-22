@@ -19,7 +19,7 @@ export function weekdayOf(date: Date): Weekday {
   return WEEKDAYS[(date.getDay() + 6) % 7]
 }
 
-/** パターンの説明（S3 の一覧）：毎日／毎週 月・木／毎月 15日／毎月 末日 */
+/** パターンの説明（S3 の一覧）：毎日／毎週 月・木／毎月 15日／毎月 末日／手動 */
 export function describePattern(pattern: Pattern): string {
   switch (pattern.type) {
     case 'DAILY':
@@ -30,5 +30,7 @@ export function describePattern(pattern: Pattern): string {
     }
     case 'MONTHLY':
       return pattern.dayOfMonth === LAST_DAY ? '毎月 末日' : `毎月 ${pattern.dayOfMonth}日`
+    case 'MANUAL':
+      return '手動'
   }
 }
